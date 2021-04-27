@@ -6,6 +6,14 @@ import torch.nn.functional as F
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
+def parse_path_file(path_file):
+    index = []
+    with open(path_file, "r", encoding="utf-8") as f:
+        for path in f.readlines():
+            index.append(path[:-1])
+    return index
+
+
 def get_param_num(model):
     num_param = sum(param.numel() for param in model.parameters())
     return num_param
