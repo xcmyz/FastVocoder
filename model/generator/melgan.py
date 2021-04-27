@@ -183,6 +183,4 @@ class MelGANGenerator(torch.nn.Module):
         if not isinstance(c, torch.Tensor):
             c = torch.tensor(c, dtype=torch.float).to(next(self.parameters()).device)
         c = self.melgan(c.transpose(1, 0).unsqueeze(0))
-        if self.pqmf is not None:
-            c = self.pqmf.synthesis(c)
-        return c.squeeze(0).transpose(1, 0)
+        return c.squeeze()
