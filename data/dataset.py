@@ -27,7 +27,8 @@ def load_data_to_buffer(audio_index_path_file, mel_index_path_file):
     if hparams.test_size == 0 and hparams.train_size != 0:
         length_dataset = hparams.train_size
     for i in tqdm(range(length_dataset)):
-        mel = np.load(mel_index[i])
+        # assert mel_index[i].split("/")[-1].split(".")[0] == audio_index[i].split("/")[-1].split(".")[0]  # check ljspeech
+        mel = np.load(mel_index[i]).T
         mel = torch.from_numpy(mel)
         wav = np.load(audio_index[i])
         wav = torch.from_numpy(wav)
@@ -36,7 +37,7 @@ def load_data_to_buffer(audio_index_path_file, mel_index_path_file):
         buffer.append({"mel": mel, "wav": wav})
     end = time.perf_counter()
     print(f"Cost {int(end-start)}s loading all data into buffer.")
-    print("Min length of mel spec in dataset is {min_length}.")
+    print(f"Min length of mel spec in dataset is {min_length}.")
     return buffer
 
 
