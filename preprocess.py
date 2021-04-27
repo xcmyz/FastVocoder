@@ -1,8 +1,9 @@
-from data.utils import pad
+import argparse
 import os
 import numpy as np
 import data.audio as audio
 
+from data.utils import pad
 from tqdm import tqdm
 from functools import partial
 from concurrent.futures import ProcessPoolExecutor
@@ -68,15 +69,21 @@ def preprocess_multiprocessing(data_path_file, save_path):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data_path', type=str, default=os.path.join("dataset", "ljspeech.txt"))
+    parser.add_argument('--save_path', type=str, default=os.path.join("dataset", "processed"))
+    parser.add_argument('--audio_index_path', type=str, default=os.path.join("dataset", "audio_index_path.txt"))
+    parser.add_argument('--mel_index_path', type=str, default=os.path.join("dataset", "mel_index_path.txt"))
+    args = parser.parse_args()
     audio_index, mel_index = 0, 0
     if MULTI_PROCESS:
-        audio_index, mel_index = preprocess_multiprocessing(os.path.join("dataset", "ljspeech.txt"), os.path.join("dataset", "processed"))
+        audio_index, mel_index = preprocess_multiprocessing(args.data_path, args.save_path)
     else:
-        audio_index, mel_index = preprocess(os.path.join("dataset", "ljspeech.txt"), os.path.join("dataset", "processed"))
-    with open(os.path.join("dataset", "audio_index_path.txt"), "w", encoding="utf-8") as f:
+        audio_index, mel_index = preprocess(args.data_path, args.save_path)
+    with open(args.audio_index_path, "w", encoding="utf-8") as f:
         for path in audio_index:
             f.write(path + "\n")
 
-    with open(os.path.join("dataset", "mel_index_path.txt"), "w", encoding="utf-8") as f:
+    with open(args.mel_index_path, "w", encoding="utf-8") as f:
         for path in mel_index:
             f.write(path + "\n")
