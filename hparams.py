@@ -20,13 +20,14 @@ power = 1.5
 
 # Train
 test_size = 0  # for testing training process
-train_size = 12900
+train_size = 1000
 valid_size = 100
 
 epochs = 100000
-batch_size = 32
+batch_size = 2
 batch_expand_size = 8
-discriminator_train_start_steps = 100000
+discriminator_train_start_steps = 0
+n_warm_up_step = 0
 
 use_feature_map_loss = False
 
@@ -38,3 +39,9 @@ grad_clip_thresh = 1.0
 log_step = 5
 clear_time = 20
 save_step = 5000
+
+checkpoint_path = os.path.join("checkpoint")
+logger_path = os.path.join("logger")
+
+fixed_length = 70
+lambda_adv = 1.
