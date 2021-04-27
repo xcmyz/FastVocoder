@@ -27,7 +27,6 @@ class ScheduledOptim():
         return learning_rate
 
     def zero_grad(self):
-        # print(self.init_lr)
         self._optimizer.zero_grad()
 
     def _get_lr_scale(self):
