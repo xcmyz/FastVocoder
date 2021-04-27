@@ -1,4 +1,5 @@
 import scipy
+import scipy.io.wavfile
 import hparams
 import librosa
 import numpy as np
