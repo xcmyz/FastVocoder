@@ -1,2 +1,1 @@
-# Basis Signal Based Vocoder
-Experiment.
+# GAN Based Neural Vocoder
