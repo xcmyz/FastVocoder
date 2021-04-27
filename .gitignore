@@ -139,6 +139,7 @@ cython_debug/
 
 # Me
 .DS_store
+test*
 dataset/
 logger/
 checkpoint/
