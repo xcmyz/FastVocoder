@@ -138,13 +138,3 @@ def pad(input_ele, mel_max_length=None):
             out_list.append(one_batch_padded)
         out_padded = torch.stack(out_list)
         return out_padded
-
-
-def init_weights(m, mean=0.0, std=0.01):
-    classname = m.__class__.__name__
-    if classname.find("Conv") != -1:
-        m.weight.data.normal_(mean, std)
-
-
-def get_padding(kernel_size, dilation=1):
-    return int((kernel_size*dilation - dilation)/2)
