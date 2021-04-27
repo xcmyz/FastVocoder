@@ -10,7 +10,8 @@ import numpy as np
 
 from model.loss.loss import Loss
 from optimizer import RAdam, ScheduledOptim
-from model.generator.melgan import MelGANGenerator
+from model.generator import MelGANGenerator
+from model.generator import HiFiGANGenerator
 from model.discriminator import Discriminator
 
 from data.dataset import BufferDataset, DataLoader
@@ -178,7 +179,7 @@ def main(args):
 
     # Define model
     print("Loading Model...")
-    model = MelGANGenerator().to(device)
+    model = HiFiGANGenerator().to(device)
     print("model is", model)
     discriminator = Discriminator().to(device)
 
@@ -191,7 +192,7 @@ def main(args):
     buffer = load_data_to_buffer(args.audio_index_path, args.mel_index_path)
 
     # Optimizer and loss
-    optimizer = torch.optim.Adam(model.melgan.parameters(), lr=args.learning_rate_frozen, eps=1.0e-6, weight_decay=0.0)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate_frozen, eps=1.0e-6, weight_decay=0.0)
     scheduled_optim = ScheduledOptim(optimizer, 256, hp.n_warm_up_step, args.restore_step)
     discriminator_optimizer = torch.optim.Adam(discriminator.parameters(), lr=args.learning_rate_discriminator_frozen, eps=1.0e-6, weight_decay=0.0)
     discriminator_sche_optim = ScheduledOptim(discriminator_optimizer, 256, hp.n_warm_up_step, args.restore_step)
