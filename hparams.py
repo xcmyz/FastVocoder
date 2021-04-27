@@ -43,5 +43,5 @@ save_step = 5000
 checkpoint_path = os.path.join("checkpoint")
 logger_path = os.path.join("logger")
 
-fixed_length = 70
+fixed_length = 140
 lambda_adv = 1.
