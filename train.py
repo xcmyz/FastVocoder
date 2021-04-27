@@ -277,8 +277,8 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--audio_index_path', type=str, default=os.path.join("dataset", "audio_index_path.txt"))
-    parser.add_argument('--mel_index_path', type=str, default=os.path.join("dataset", "mel_index_path.txt"))
+    parser.add_argument('--audio_index_path', type=str, default=os.path.join("dataset", "audio", "train"))
+    parser.add_argument('--mel_index_path', type=str, default=os.path.join("dataset", "mel", "train"))
     parser.add_argument('--restore_step', type=int, default=0)
     parser.add_argument('--frozen_learning_rate', type=bool, default=True)
     parser.add_argument("--learning_rate_frozen", type=float, default=hp.learning_rate)
