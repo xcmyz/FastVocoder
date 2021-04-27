@@ -74,8 +74,8 @@ class LastLayer(nn.Module):
                  pad, kernel_size, pad_params, bias):
         super(LastLayer, self).__init__()
         self.activation = getattr(torch.nn, nonlinear_activation)(**nonlinear_activation_params)
-        self.pad = getattr(torch.nn, pad)((kernel_size - 1) // 2, **pad_params),
-        self.conv = torch.nn.Conv1d(in_channels, out_channels, kernel_size, bias=bias),
+        self.pad = getattr(torch.nn, pad)((kernel_size - 1) // 2, **pad_params)
+        self.conv = torch.nn.Conv1d(in_channels, out_channels, kernel_size, bias=bias)
 
     def forward(self, x):
         x = self.activation(x)
