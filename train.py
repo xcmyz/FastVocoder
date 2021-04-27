@@ -1,32 +1,21 @@
 import torch
-import numpy as np
-import hparams as hp
 import torch.nn as nn
 import torch.nn.functional as F
-
+import argparse
+import random
 import os
 import time
-import math
-import audio
-import utils
-import random
-import ctypes
-import argparse
+import hparams as hp
+import numpy as np
 
-from loss import DNNLoss
-from multiprocessing import cpu_count
+from model.loss.loss import Loss
+from optimizer import RAdam, ScheduledOptim
+from model.generator.melgan import MelGANGenerator
+from model.discriminator.mfd import MultiResolutionSTFTDiscriminator
 
-from optimizer import RAdam
-from optimizers import ScheduledOptim
-
-from model_melgan import MelGANGenerator as MelGANGenerator_light
-from model_melgan_large import MelGANGenerator as MelGANGenerator_large
-from discriminator import NewDiscriminator
-
-from dataset import BufferDataset, DataLoader
-from dataset import get_data_to_buffer, collate_fn_tensor
-
-from dataset_non_weight_buffer import NonWeightBufferDataset
+from data.dataset import BufferDataset, DataLoader
+from data.dataset import load_data_to_buffer, collate_fn_tensor
+from data.utils import get_param_num
 
 random.seed(str(time.time()))
 
@@ -47,19 +36,12 @@ def trainer(model, discriminator,
     discriminator_sche_optim.zero_grad()
 
     # Generator Forward
-    est_source, est_weight = model(mel)
-
-    est_weight_average = est_weight.sum() / (est_weight.size(0) * est_weight.size(1) * est_weight.size(2))
-    weight_average = weight.sum() / (weight.size(0) * weight.size(1) * weight.size(2))
-    str0 = "est_weight average value: {:.6f}, weight average value: {:.6f}.".format(est_weight_average, weight_average)
+    est_source = model(mel)
 
     # Cal Loss
     total_loss = 0.
-    weight_loss, stft_loss = vocoder_loss(est_weight, weight, est_source, wav)
-    if current_step < hp.discriminator_train_start_steps:
-        total_loss = total_loss + weight_loss + stft_loss
-    else:
-        total_loss = total_loss + stft_loss
+    stft_loss = vocoder_loss(est_source, wav)
+    total_loss = total_loss + stft_loss
 
     # Adversarial
     a_l = 0.
@@ -139,13 +121,10 @@ def trainer(model, discriminator,
 
     # Logger
     t_l = total_loss.item()
-    w_l = weight_loss.item()
     s_l = stft_loss.item()
 
     with open(os.path.join("logger", "total_loss.txt"), "a") as f_total_loss:
         f_total_loss.write(str(t_l)+"\n")
-    with open(os.path.join("logger", "weight_loss.txt"), "a") as f_weight_loss:
-        f_weight_loss.write(str(w_l)+"\n")
     with open(os.path.join("logger", "stft_loss.txt"), "a") as f_stft_loss:
         f_stft_loss.write(str(s_l)+"\n")
 
@@ -153,14 +132,13 @@ def trainer(model, discriminator,
     if current_step % hp.log_step == 0:
         Now = time.perf_counter()
 
-        str1 = "Epoch [{}/{}], Step [{}/{}]:".format(epoch + 1, hp.epochs, current_step, total_step)
-        str2 = "Weight Loss: {:.6f}, STFT Loss: {:.6f}, Total Loss: {:.6f};".format(w_l, s_l, t_l)
+        str1 = f"Epoch [{epoch + 1}/{hp.epochs}], Step [{current_step}/{total_step}]:"
+        str2 = "STFT Loss: {:.6f}, Total Loss: {:.6f};".format(s_l, t_l)
         str3 = "Adversarial Loss: {:.6f}, Discriminator Loss: {:.6f}, Feature Map Loss: {:.6f};".format(a_l, d_l, f_l)
         str4 = "Current Learning Rate is {:.6f}, discriminator Learning Rate is {:.6f};".format(scheduled_optim.get_learning_rate(), discriminator_sche_optim.get_learning_rate())
         str5 = "Time Used: {:.3f}s, Estimated Time Remaining: {:.3f}s.".format((Now - Start), (total_step - current_step) * np.mean(time_list))
 
         print()
-        print(str0)
         print(str1)
         print(str2)
         print(str3)
@@ -168,7 +146,6 @@ def trainer(model, discriminator,
         print(str5)
 
         with open(os.path.join("logger", "logger.txt"), "a") as f_logger:
-            f_logger.write(str0 + "\n")
             f_logger.write(str1 + "\n")
             f_logger.write(str2 + "\n")
             f_logger.write(str3 + "\n")
@@ -201,24 +178,17 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Define model
-    print("Use MelGAN Generator")
-    basis_signal_weight = np.load(os.path.join("data", "basis_signal_weight.npy"))
-    basis_signal_weight = torch.from_numpy(basis_signal_weight)
-    model = 0
-    if args.generator == "light":
-        model = MelGANGenerator_light(basis_signal_weight).to(device)
-    elif args.generator == "large":
-        model = MelGANGenerator_large(basis_signal_weight).to(device)
-    discriminator = NewDiscriminator().to(device)
+    print("Loading Model...")
+    model = MelGANGenerator().to(device)
+    discriminator = Discriminator().to(device)
 
     print("Model Has Been Defined")
-    num_param = utils.get_param_num(model)
+    num_param = get_param_num(model)
     print('Number of TTS Parameters:', num_param)
 
     # Get buffer
-    if args.dataset == "buffer":
-        print("Load data to buffer")
-        buffer = get_data_to_buffer()
+    print("Load data to buffer")
+    buffer = load_data_to_buffer()
 
     # Optimizer and loss
     basis_signal_optimizer = torch.optim.Adam(model.basis_signal.parameters())
@@ -229,7 +199,7 @@ def main(args):
     discriminator_optimizer = torch.optim.Adam(discriminator.parameters(), lr=args.learning_rate_discriminator_frozen, eps=1.0e-6, weight_decay=0.0)
     discriminator_sche_optim = ScheduledOptim(discriminator_optimizer, hp.weight_dim, hp.n_warm_up_step, args.restore_step)
 
-    vocoder_loss = DNNLoss().to(device)
+    vocoder_loss = Loss().to(device)
     print("Defined Optimizer and Loss Function.")
 
     # Load checkpoint if exists
@@ -252,11 +222,7 @@ def main(args):
         os.mkdir(hp.logger_path)
 
     # Get dataset
-    dataset = 0
-    if args.dataset == "buffer":
-        dataset = BufferDataset(buffer)
-    else:
-        dataset = NonWeightBufferDataset()
+    dataset = BufferDataset(buffer)
 
     # Get Training Loader
     training_loader = DataLoader(dataset,
@@ -320,9 +286,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--restore_step', type=int, default=0)
     parser.add_argument('--frozen_learning_rate', type=bool, default=True)
-    parser.add_argument("--learning_rate_frozen", type=float, default=1e-4)
-    parser.add_argument("--learning_rate_discriminator_frozen", type=float, default=5e-5)
-    parser.add_argument("--dataset", type=str, default="buffer")
-    parser.add_argument("--generator", type=str, default="light")
+    parser.add_argument("--learning_rate_frozen", type=float, default=hp.learning_rate)
+    parser.add_argument("--learning_rate_discriminator_frozen", type=float, default=hp.learning_rate_discriminator)
     args = parser.parse_args()
     main(args)
