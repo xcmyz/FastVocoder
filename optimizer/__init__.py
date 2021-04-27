@@ -1,3 +1,3 @@
-from torch.optim import *  # NOQA
-
-from .radam import *  # NOQA
+from .radam import *
+from .optimizers import *
+from torch.optim import *
