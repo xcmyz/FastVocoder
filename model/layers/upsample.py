@@ -10,7 +10,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from layers import Conv1d
+from model.layers import Conv1d
 
 
 class Stretch2d(torch.nn.Module):

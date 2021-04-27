@@ -7,7 +7,7 @@
 
 import torch
 
-from layers import CausalConv1d
+from model.layers import CausalConv1d
 
 
 class ResidualStack(torch.nn.Module):

@@ -11,8 +11,6 @@ import math
 import torch
 import torch.nn.functional as F
 
-import hparams as hp
-
 
 class Conv1d(torch.nn.Conv1d):
     """Conv1d module with customized initialization."""
