@@ -11,7 +11,7 @@ import numpy as np
 from model.loss.loss import Loss
 from optimizer import RAdam, ScheduledOptim
 from model.generator.melgan import MelGANGenerator
-from model.discriminator.mfd import MultiResolutionSTFTDiscriminator
+from model.discriminator import Discriminator
 
 from data.dataset import BufferDataset, DataLoader
 from data.dataset import load_data_to_buffer, collate_fn_tensor
@@ -21,17 +21,16 @@ random.seed(str(time.time()))
 
 
 def trainer(model, discriminator,
-            optimizer, discriminator_optimizer, basis_signal_optimizer,
+            optimizer, discriminator_optimizer,
             scheduled_optim, discriminator_sche_optim,
             vocoder_loss,
-            mel, weight, wav,
+            mel, wav,
             epoch, current_step, total_step,
             time_list, Start):
     # Start
     start_time = time.perf_counter()
 
     # Init
-    basis_signal_optimizer.zero_grad()
     scheduled_optim.zero_grad()
     discriminator_sche_optim.zero_grad()
 
@@ -188,17 +187,13 @@ def main(args):
 
     # Get buffer
     print("Load data to buffer")
-    buffer = load_data_to_buffer()
+    buffer = load_data_to_buffer(args.audio_index_path, args.mel_index_path)
 
     # Optimizer and loss
-    basis_signal_optimizer = torch.optim.Adam(model.basis_signal.parameters())
-
     optimizer = torch.optim.Adam(model.melgan.parameters(), lr=args.learning_rate_frozen, eps=1.0e-6, weight_decay=0.0)
-    scheduled_optim = ScheduledOptim(optimizer, hp.weight_dim, hp.n_warm_up_step, args.restore_step)
-
+    scheduled_optim = ScheduledOptim(optimizer, 256, hp.n_warm_up_step, args.restore_step)
     discriminator_optimizer = torch.optim.Adam(discriminator.parameters(), lr=args.learning_rate_discriminator_frozen, eps=1.0e-6, weight_decay=0.0)
-    discriminator_sche_optim = ScheduledOptim(discriminator_optimizer, hp.weight_dim, hp.n_warm_up_step, args.restore_step)
-
+    discriminator_sche_optim = ScheduledOptim(discriminator_optimizer, 256, hp.n_warm_up_step, args.restore_step)
     vocoder_loss = Loss().to(device)
     print("Defined Optimizer and Loss Function.")
 
@@ -244,7 +239,6 @@ def main(args):
 
     for epoch in range(hp.epochs):
         for i, batchs in enumerate(training_loader):
-            number_of_batch = len(batchs)
             preload_data = None
 
             # real batch start here
@@ -253,15 +247,13 @@ def main(args):
 
                 # Get Data
                 clock_1_s = time.perf_counter()
-                mel, weight, wav = 0, 0, 0
+                mel, wav = 0, 0
                 if preload_data == None:
                     mel = db["mel"].float().to(device)
-                    weight = db["weight"].float().to(device)
                     wav = db["wav"].float().to(device)
                     mel = mel.contiguous().transpose(1, 2)
                 else:
                     mel = preload_data["mel"]
-                    weight = preload_data["weight"]
                     wav = preload_data["wav"]
                 clock_1_e = time.perf_counter()
                 time_used_1 = round(clock_1_e - clock_1_s, 5)
@@ -271,10 +263,10 @@ def main(args):
                 clock_2_s = time.perf_counter()
                 time_list = trainer(
                     model, discriminator,
-                    optimizer, discriminator_optimizer, basis_signal_optimizer,
+                    optimizer, discriminator_optimizer,
                     scheduled_optim, discriminator_sche_optim,
                     vocoder_loss,
-                    mel, weight, wav,
+                    mel, wav,
                     epoch, current_step, total_step,
                     time_list, Start)
                 clock_2_e = time.perf_counter()
@@ -284,6 +276,8 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument('--audio_index_path', type=str, default=os.path.join("dataset", "audio_index_path.txt"))
+    parser.add_argument('--mel_index_path', type=str, default=os.path.join("dataset", "mel_index_path.txt"))
     parser.add_argument('--restore_step', type=int, default=0)
     parser.add_argument('--frozen_learning_rate', type=bool, default=True)
     parser.add_argument("--learning_rate_frozen", type=float, default=hp.learning_rate)
