@@ -94,8 +94,8 @@ if __name__ == "__main__":
 
     os.makedirs(args.audio_index_path)
     os.makedirs(args.mel_index_path)
-    assert len(audio_index) >= (hp.train_size + hp.valid_size + hp.epochs)
-    index_list = [i for i in range(hp.train_size + hp.valid_size + hp.epochs)]
+    assert len(audio_index) >= (hp.train_size + hp.valid_size + hp.eval_size)
+    index_list = [i for i in range(hp.train_size + hp.valid_size + hp.eval_size)]
     random.shuffle(index_list)
     index_list_train = index_list[0:hp.train_size]
     index_list_valid = index_list[hp.train_size:hp.train_size + hp.valid_size]
