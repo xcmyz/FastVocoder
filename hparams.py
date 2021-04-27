@@ -20,13 +20,13 @@ power = 1.5
 
 # Train
 test_size = 0  # for testing training process
-train_size = 1000
+train_size = 12900
 valid_size = 100
 
 epochs = 100000
-batch_size = 2
+batch_size = 32
 batch_expand_size = 8
-discriminator_train_start_steps = 0
+discriminator_train_start_steps = 100000
 n_warm_up_step = 0
 
 use_feature_map_loss = False
