@@ -20,7 +20,7 @@ power = 1.5
 
 # Train
 test_size = 0  # for testing training process
-train_size = 12900
+train_size = 9800
 valid_size = 100
 
 epochs = 100000
