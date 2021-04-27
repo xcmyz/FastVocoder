@@ -22,7 +22,7 @@ class MelGANGenerator(torch.nn.Module):
                  in_channels=80,
                  out_channels=1,
                  kernel_size=7,
-                 channels=[128, 128, 64, 64, 64],
+                 channels=[512, 256, 128, 64, 32],
                  bias=True,
                  upsample_scales=[10, 6, 2, 2],
                  stack_kernel_size=3,
@@ -133,7 +133,7 @@ class MelGANGenerator(torch.nn.Module):
             Tensor: Output tensor (B, 1, T ** prod(upsample_scales)).
 
         """
-        est_source = self.melgan(c)
+        est_source = self.melgan(c)[:, 0, :]
         return est_source
 
     def remove_weight_norm(self):
