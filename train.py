@@ -89,7 +89,7 @@ def trainer(model, discriminator,
     if current_step > hp.discriminator_train_start_steps:
         # re-compute y_ which leads better quality
         with torch.no_grad():
-            est_source_for_d, _ = model(mel)
+            est_source_for_d = model(mel)
 
         # discriminator loss
         p = discriminator(wav.unsqueeze(1))
@@ -179,6 +179,7 @@ def main(args):
     # Define model
     print("Loading Model...")
     model = MelGANGenerator().to(device)
+    print("model is", model)
     discriminator = Discriminator().to(device)
 
     print("Model Has Been Defined")
