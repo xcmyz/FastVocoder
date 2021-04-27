@@ -8,13 +8,15 @@ import numpy as np
 from tqdm import tqdm
 from torch.nn import functional as F
 from torch.utils.data import Dataset, DataLoader
-from data.utils import pad_1D_tensor, pad_2D_tensor
+from data.utils import pad_1D_tensor, pad_2D_tensor, parse_path_file
 
 random.seed(str(time.time()))
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-def load_data_to_buffer(audio_index, mel_index):
+def load_data_to_buffer(audio_index_path_file, mel_index_path_file):
+    audio_index = parse_path_file(audio_index_path_file)
+    mel_index = parse_path_file(mel_index_path_file)
     buffer = []
     start = time.perf_counter()
     min_length = 1e10
