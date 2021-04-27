@@ -1,34 +1,33 @@
 import os
-import torch
-import audio
-import shutil
 import numpy as np
-import hparams as hp
+import data.audio as audio
 
 from tqdm import tqdm
-from data import ljspeech
 
 
-def preprocess_ljspeech(filename):
-    in_dir = filename
-    out_dir = hp.mel_ground_truth
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir, exist_ok=True)
-    metadata = ljspeech.build_from_path(in_dir, out_dir)
-    write_metadata(metadata, out_dir)
-    shutil.move(os.path.join(hp.mel_ground_truth, "train.txt"), os.path.join("data", "train.txt"))
-
-
-def write_metadata(metadata, out_dir):
-    with open(os.path.join(out_dir, 'train.txt'), 'w', encoding='utf-8') as f:
-        for m in metadata:
-            f.write(m + '\n')
-
-
-def main():
-    path = os.path.join("data", "LJSpeech-1.1")
-    preprocess_ljspeech(path)
+def preprocess(data_path_file, save_path):
+    os.makedirs(save_path, exist_ok=True)
+    audio_index = []
+    mel_index = []
+    with open(data_path_file, "r") as f:
+        lines = f.readlines()
+        for i in tqdm(range(len(lines))):
+            filename = lines[i]
+            try:
+                wav_filepath = os.path.join(filename[:-1])
+                wav_filename = filename[:-1].split("/")[-1]
+                mel_filepath = os.path.join(save_path, f"{wav_filename}.mel.npy")
+                y = audio.load_wav(wav_filepath, encode=False)
+                new_wav_filepath = os.path.join(save_path, f"{wav_filename}.npy")
+                mel = audio.melspectrogram(y)
+                np.save(mel_filepath, mel)
+                np.save(new_wav_filepath, y)
+                audio_index.append(new_wav_filepath)
+                mel_index.append(mel_filepath)
+            except Exception as e:
+                print(f"ERROR: {str(e)}")
+    return audio_index, mel_index
 
 
 if __name__ == "__main__":
-    main()
+    preprocess(os.path.join("dataset", "ljspeech.txt"), os.path.join("dataset", "processed"))
