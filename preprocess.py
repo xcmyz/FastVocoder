@@ -2,6 +2,8 @@ import argparse
 import os
 import numpy as np
 import data.audio as audio
+import hparams as hp
+import random
 
 from data.utils import pad
 from tqdm import tqdm
@@ -68,22 +70,36 @@ def preprocess_multiprocessing(data_path_file, save_path):
     return audio_index, mel_index
 
 
+def write_file(audio_index, mel_index, index_list, file_name, audio_index_path, mel_index_path):
+    with open(os.path.join(audio_index_path, file_name), "w", encoding="utf-8") as f:
+        for index in index_list:
+            f.write(audio_index[index] + "\n")
+    with open(os.path.join(mel_index_path, file_name), "w", encoding="utf-8") as f:
+        for index in index_list:
+            f.write(mel_index[index] + "\n")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path', type=str, default=os.path.join("dataset", "ljspeech.txt"))
     parser.add_argument('--save_path', type=str, default=os.path.join("dataset", "processed"))
-    parser.add_argument('--audio_index_path', type=str, default=os.path.join("dataset", "audio_index_path.txt"))
-    parser.add_argument('--mel_index_path', type=str, default=os.path.join("dataset", "mel_index_path.txt"))
+    parser.add_argument('--audio_index_path', type=str, default=os.path.join("dataset", "audio"))
+    parser.add_argument('--mel_index_path', type=str, default=os.path.join("dataset", "mel"))
     args = parser.parse_args()
     audio_index, mel_index = 0, 0
     if MULTI_PROCESS:
         audio_index, mel_index = preprocess_multiprocessing(args.data_path, args.save_path)
     else:
         audio_index, mel_index = preprocess(args.data_path, args.save_path)
-    with open(args.audio_index_path, "w", encoding="utf-8") as f:
-        for path in audio_index:
-            f.write(path + "\n")
 
-    with open(args.mel_index_path, "w", encoding="utf-8") as f:
-        for path in mel_index:
-            f.write(path + "\n")
+    os.makedirs(args.audio_index_path)
+    os.makedirs(args.mel_index_path)
+    assert len(audio_index) >= (hp.train_size + hp.valid_size + hp.epochs)
+    index_list = [i for i in range(hp.train_size + hp.valid_size + hp.epochs)]
+    random.shuffle(index_list)
+    index_list_train = index_list[0:hp.train_size]
+    index_list_valid = index_list[hp.train_size:hp.train_size + hp.valid_size]
+    index_list_eval = index_list[hp.train_size + hp.valid_size:hp.train_size + hp.valid_size + hp.eval_size]
+    write_file(audio_index, mel_index, index_list_train, "train", args.audio_index_path, args.mel_index_path)
+    write_file(audio_index, mel_index, index_list_valid, "valid", args.audio_index_path, args.mel_index_path)
+    write_file(audio_index, mel_index, index_list_eval, "eval", args.audio_index_path, args.mel_index_path)
