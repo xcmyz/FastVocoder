@@ -24,8 +24,6 @@ def load_data_to_buffer(audio_index_path_file, mel_index_path_file):
     length_dataset = len(audio_index)
     if hparams.test_size != 0:
         length_dataset = hparams.test_size
-    if hparams.test_size == 0 and hparams.train_size != 0:
-        length_dataset = hparams.train_size
     for i in tqdm(range(length_dataset)):
         # assert mel_index[i].split("/")[-1].split(".")[0] == audio_index[i].split("/")[-1].split(".")[0]  # check ljspeech
         mel = np.load(mel_index[i]).T
