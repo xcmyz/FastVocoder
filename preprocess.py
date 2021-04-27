@@ -92,8 +92,8 @@ if __name__ == "__main__":
     else:
         audio_index, mel_index = preprocess(args.data_path, args.save_path)
 
-    os.makedirs(args.audio_index_path)
-    os.makedirs(args.mel_index_path)
+    os.makedirs(args.audio_index_path, exist_ok=True)
+    os.makedirs(args.mel_index_path, exist_ok=True)
     assert len(audio_index) >= (hp.train_size + hp.valid_size + hp.eval_size)
     index_list = [i for i in range(hp.train_size + hp.valid_size + hp.eval_size)]
     random.shuffle(index_list)
