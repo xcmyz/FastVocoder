@@ -5,7 +5,6 @@ import data.audio as audio
 import hparams as hp
 import random
 
-from data.utils import pad
 from tqdm import tqdm
 from functools import partial
 from concurrent.futures import ProcessPoolExecutor
