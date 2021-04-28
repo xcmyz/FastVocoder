@@ -124,6 +124,9 @@ class HiFiGANGenerator(torch.nn.Module):
         return x[:, 0, :]
 
     def inference(self, x):
+        if not isinstance(x, torch.Tensor):
+            x = torch.tensor(x, dtype=torch.float).to(next(self.parameters()).device)
+        x = x.transpose(1, 0).unsqueeze(0)
         x = self.conv_pre(x)
         for i in range(self.num_upsamples):
             x = F.leaky_relu(x, LRELU_SLOPE)
