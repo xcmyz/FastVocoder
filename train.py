@@ -191,7 +191,7 @@ def main(args):
     pqmf = None
     if MULTI_BAND:
         print("Define PQMF")
-        pqmf = PQMF()
+        pqmf = PQMF().to(device)
     print("model is", model)
     discriminator = Discriminator().to(device)
 
