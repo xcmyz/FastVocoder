@@ -8,7 +8,9 @@ class Loss(nn.Module):
         super(Loss, self).__init__()
         self.stft_loss = MultiResolutionSTFTLoss()
 
-    def forward(self, est_source, wav):
+    def forward(self, est_source, wav, pqmf=None):
+        if pqmf is not None:
+            est_source = pqmf.synthesis(est_source)[:, 0, :]
         wav.requires_grad = False
         assert est_source.size(1) == wav.size(1)
         sc_loss, mag_loss = self.stft_loss(est_source, wav)
