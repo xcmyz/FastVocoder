@@ -10,7 +10,8 @@ class Loss(nn.Module):
 
     def forward(self, est_source, wav, pqmf=None):
         if pqmf is not None:
-            est_source = pqmf.synthesis(est_source)[:, 0, :]
+            wav = pqmf.analysis(wav)
+            print(wav.size())
         wav.requires_grad = False
         assert est_source.size(1) == wav.size(1)
         sc_loss, mag_loss = self.stft_loss(est_source, wav)
