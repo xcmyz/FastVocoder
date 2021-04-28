@@ -7,6 +7,7 @@ import hparams as hp
 from data.audio import save_wav
 from model.generator import MelGANGenerator
 from model.generator import MultiBandHiFiGANGenerator
+from model.generator import HiFiGANGenerator
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
