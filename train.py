@@ -13,13 +13,16 @@ from model.loss.loss import Loss
 from optimizer import RAdam, ScheduledOptim
 from model.generator import MelGANGenerator
 from model.generator import HiFiGANGenerator
+from model.generator import MultiBandHiFiGANGenerator
 from model.discriminator import Discriminator
+from model.generator.pqmf import PQMF
 
 from data.dataset import BufferDataset, DataLoader
 from data.dataset import load_data_to_buffer, collate_fn_tensor
 from data.utils import get_param_num
 
 random.seed(str(time.time()))
+MULTI_BAND = True
 
 
 def trainer(model, discriminator,
@@ -29,7 +32,8 @@ def trainer(model, discriminator,
             mel, wav,
             epoch, current_step, total_step,
             time_list, Start,
-            current_checkpoint_path, current_logger_path):
+            current_checkpoint_path, current_logger_path,
+            pqmf=None):
     # Start
     start_time = time.perf_counter()
 
@@ -42,7 +46,7 @@ def trainer(model, discriminator,
 
     # Cal Loss
     total_loss = 0.
-    stft_loss = vocoder_loss(est_source, wav)
+    stft_loss = vocoder_loss(est_source, wav, pqmf=pqmf)
     total_loss = total_loss + stft_loss
 
     # Adversarial
@@ -93,6 +97,8 @@ def trainer(model, discriminator,
         # re-compute y_ which leads better quality
         with torch.no_grad():
             est_source_for_d = model(mel)
+            if pqmf is not None:
+                est_source_for_d = pqmf.synthesis(est_source_for_d)[:, 0, :]
 
         # discriminator loss
         p = discriminator(wav.unsqueeze(1))
@@ -181,7 +187,11 @@ def main(args):
 
     # Define model
     print("Loading Model...")
-    model = HiFiGANGenerator().to(device)
+    model = MultiBandHiFiGANGenerator().to(device)
+    pqmf = None
+    if MULTI_BAND:
+        print("Define PQMF")
+        pqmf = PQMF()
     print("model is", model)
     discriminator = Discriminator().to(device)
 
@@ -278,7 +288,8 @@ def main(args):
                     mel, wav,
                     epoch, current_step, total_step,
                     time_list, Start,
-                    current_checkpoint_path, current_logger_path)
+                    current_checkpoint_path, current_logger_path,
+                    pqmf=pqmf)
                 clock_2_e = time.perf_counter()
                 time_used_2 = round(clock_2_e - clock_2_s, 5)
                 # print(f"training: {time_used_2}")
