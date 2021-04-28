@@ -8,6 +8,7 @@ import time
 import hparams as hp
 import numpy as np
 
+from datetime import datetime
 from model.loss.loss import Loss
 from optimizer import RAdam, ScheduledOptim
 from model.generator import MelGANGenerator
@@ -27,7 +28,8 @@ def trainer(model, discriminator,
             vocoder_loss,
             mel, wav,
             epoch, current_step, total_step,
-            time_list, Start):
+            time_list, Start,
+            current_checkpoint_path, current_logger_path):
     # Start
     start_time = time.perf_counter()
 
@@ -123,9 +125,9 @@ def trainer(model, discriminator,
     t_l = total_loss.item()
     s_l = stft_loss.item()
 
-    with open(os.path.join("logger", "total_loss.txt"), "a") as f_total_loss:
+    with open(os.path.join(current_logger_path, "total_loss.txt"), "a") as f_total_loss:
         f_total_loss.write(str(t_l)+"\n")
-    with open(os.path.join("logger", "stft_loss.txt"), "a") as f_stft_loss:
+    with open(os.path.join(current_logger_path, "stft_loss.txt"), "a") as f_stft_loss:
         f_stft_loss.write(str(s_l)+"\n")
 
     # Print
@@ -145,7 +147,7 @@ def trainer(model, discriminator,
         print(str4)
         print(str5)
 
-        with open(os.path.join("logger", "logger.txt"), "a") as f_logger:
+        with open(os.path.join(current_logger_path, "logger.txt"), "a") as f_logger:
             f_logger.write(str1 + "\n")
             f_logger.write(str2 + "\n")
             f_logger.write(str3 + "\n")
@@ -161,7 +163,7 @@ def trainer(model, discriminator,
                 'discriminator': discriminator.state_dict(),
                 'discriminator_optimizer': discriminator_optimizer.state_dict()
             },
-            os.path.join(hp.checkpoint_path, 'checkpoint_%d.pth.tar' % current_step))
+            os.path.join(current_checkpoint_path, 'checkpoint_%d.pth.tar' % current_step))
         print("save model at step %d ..." % current_step)
 
     end_time = time.perf_counter()
@@ -200,23 +202,28 @@ def main(args):
     print("Defined Optimizer and Loss Function.")
 
     # Load checkpoint if exists
+    os.makedirs(hp.checkpoint_path, exist_ok=True)
+    current_checkpoint_path = str(datetime.now()).replace(" ", "-").replace(":", "-").replace(".", "-")
+    current_checkpoint_path = os.path.join(hp.checkpoint_path, current_checkpoint_path)
     try:
-        checkpoint = torch.load(os.path.join(hp.checkpoint_path, 'checkpoint_%d.pth.tar' % args.restore_step), map_location=torch.device(device))
+        checkpoint = torch.load(os.path.join(args.checkpoint_path), map_location=torch.device(device))
         model.load_state_dict(checkpoint['model'])
         optimizer.load_state_dict(checkpoint['optimizer'])
         if 'discriminator' in checkpoint:
             print("loading discriminator")
             discriminator.load_state_dict(checkpoint['discriminator'])
             discriminator_optimizer.load_state_dict(checkpoint['discriminator_optimizer'])
+        os.makedirs(current_checkpoint_path, exist_ok=True)
         print("\n---Model Restored at Step %d---\n" % args.restore_step)
     except:
         print("\n---Start New Training---\n")
-        if not os.path.exists(hp.checkpoint_path):
-            os.mkdir(hp.checkpoint_path)
+        os.makedirs(current_checkpoint_path, exist_ok=True)
 
     # Init logger
-    if not os.path.exists(hp.logger_path):
-        os.mkdir(hp.logger_path)
+    os.makedirs(hp.logger_path, exist_ok=True)
+    current_logger_path = str(datetime.now()).replace(" ", "-").replace(":", "-").replace(".", "-")
+    current_logger_path = os.path.join(hp.logger_path, current_logger_path)
+    os.makedirs(current_logger_path, exist_ok=True)
 
     # Get dataset
     dataset = BufferDataset(buffer)
@@ -270,7 +277,8 @@ def main(args):
                     vocoder_loss,
                     mel, wav,
                     epoch, current_step, total_step,
-                    time_list, Start)
+                    time_list, Start,
+                    current_checkpoint_path, current_logger_path)
                 clock_2_e = time.perf_counter()
                 time_used_2 = round(clock_2_e - clock_2_s, 5)
                 # print(f"training: {time_used_2}")
@@ -280,6 +288,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--audio_index_path', type=str, default=os.path.join("dataset", "audio", "train"))
     parser.add_argument('--mel_index_path', type=str, default=os.path.join("dataset", "mel", "train"))
+    parser.add_argument('--checkpoint_path', type=str, default="")
     parser.add_argument('--restore_step', type=int, default=0)
     parser.add_argument('--frozen_learning_rate', type=bool, default=True)
     parser.add_argument("--learning_rate_frozen", type=float, default=hp.learning_rate)
