@@ -5,7 +5,8 @@ import numpy as np
 import hparams as hp
 
 from data.audio import save_wav
-from model.generator.melgan import MelGANGenerator
+from model.generator import MelGANGenerator
+from model.generator import MultiBandHiFiGANGenerator
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -15,7 +16,7 @@ class Synthesizer:
         self.model = self.load_model(checkpoint_path)
 
     def load_model(self, checkpoint_path):
-        model = MelGANGenerator().to(device)
+        model = MultiBandHiFiGANGenerator().to(device)
         model.load_state_dict(
             torch.load(os.path.join(checkpoint_path),
                        map_location=torch.device(device))['model'])
