@@ -8,6 +8,7 @@ from data.audio import save_wav
 from model.generator import MelGANGenerator
 from model.generator import MultiBandHiFiGANGenerator
 from model.generator import HiFiGANGenerator
+from train import MODEL_NAME, MULTI_BAND
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -17,7 +18,15 @@ class Synthesizer:
         self.model = self.load_model(checkpoint_path)
 
     def load_model(self, checkpoint_path):
-        model = MultiBandHiFiGANGenerator().to(device)
+        print(f"Loading Model of {MODEL_NAME}...")
+        if MODEL_NAME == "melgan":
+            model = MelGANGenerator().to(device)
+        elif MODEL_NAME == "hifigan":
+            model = HiFiGANGenerator().to(device)
+        elif MODEL_NAME == "multiband-hifigan":
+            model = MultiBandHiFiGANGenerator().to(device)
+        else:
+            raise Exception("no model find!")
         model.load_state_dict(
             torch.load(os.path.join(checkpoint_path),
                        map_location=torch.device(device))['model'])
