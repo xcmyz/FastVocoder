@@ -22,7 +22,10 @@ from data.dataset import load_data_to_buffer, collate_fn_tensor
 from data.utils import get_param_num
 
 random.seed(str(time.time()))
-MULTI_BAND = True
+MODEL_NAME = "melgan"
+MULTI_BAND = False
+if MODEL_NAME == "multiband-hifigan":
+    MULTI_BAND = True
 
 
 def trainer(model, discriminator,
@@ -188,8 +191,15 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Define model
-    print("Loading Model...")
-    model = MultiBandHiFiGANGenerator().to(device)
+    print(f"Loading Model of {MODEL_NAME}...")
+    if MODEL_NAME == "melgan":
+        model = MelGANGenerator().to(device)
+    elif MODEL_NAME == "hifigan":
+        model = HiFiGANGenerator().to(device)
+    elif MODEL_NAME == "multiband-hifigan":
+        model = MultiBandHiFiGANGenerator().to(device)
+    else:
+        raise Exception("no model find!")
     pqmf = None
     if MULTI_BAND:
         print("Define PQMF")
