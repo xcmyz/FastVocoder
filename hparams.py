@@ -27,7 +27,7 @@ eval_size = 100
 epochs = 100000
 batch_size = 32
 batch_expand_size = 8
-discriminator_train_start_steps = 0
+discriminator_train_start_steps = 100000
 n_warm_up_step = 0
 
 use_feature_map_loss = False
