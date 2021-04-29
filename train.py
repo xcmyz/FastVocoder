@@ -53,6 +53,8 @@ def trainer(model, discriminator,
     a_l = 0.
     f_l = 0.
     if current_step > hp.discriminator_train_start_steps:
+        if pqmf is not None:
+            est_source = pqmf.synthesis(est_source)[:, 0, :]
         est_p = discriminator(est_source.unsqueeze(1))
 
         # for multi-scale discriminator
