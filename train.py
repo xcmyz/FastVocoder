@@ -22,7 +22,7 @@ from data.dataset import load_data_to_buffer, collate_fn_tensor
 from data.utils import get_param_num
 
 random.seed(str(time.time()))
-MODEL_NAME = "melgan"
+MODEL_NAME = "hifigan"
 MULTI_BAND = False
 if MODEL_NAME == "multiband-hifigan":
     MULTI_BAND = True
