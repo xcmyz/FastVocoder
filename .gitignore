@@ -140,6 +140,7 @@ cython_debug/
 # Me
 .DS_store
 test*
-dataset/
+dataset/*
+!dataset/ljspeech.txt
 logger/
 checkpoint/
