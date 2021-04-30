@@ -20,3 +20,7 @@
         --checkpoint_path <checkpoint path> \
         --restore_step <starting step from your checkpoint>
     ```
+3. 默认模式
+    - 下载`ljspeech`数据集至`dataset`文件夹
+    - 直接运行``` bash preprocess.sh ```
+    - 运行``` CUDA_VISIBLE_DEVICES=<GPU id> python3 train.py ```即可开始训练
