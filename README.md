@@ -1,4 +1,5 @@
 # GAN Based Neural Vocoder
+[cn readme](/README_CN.md)
 
 ## Usage
 
