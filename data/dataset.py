@@ -1,6 +1,7 @@
 import os
 import time
 import torch
+import pickle
 import random
 import hparams
 import numpy as np
@@ -10,11 +11,18 @@ from torch.nn import functional as F
 from torch.utils.data import Dataset, DataLoader
 from data.utils import pad_1D_tensor, pad_2D_tensor, parse_path_file
 
-random.seed(str(time.time()))
+random.seed(0)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-def load_data_to_buffer(audio_index_path_file, mel_index_path_file):
+def load_data_to_buffer(audio_index_path_file, mel_index_path_file, logger, feature_savepath="features.bin"):
+    if os.path.exists(feature_savepath):
+        logger.info("Loading from bin...")
+        with open(feature_savepath, "rb") as f:
+            buffer = pickle.load(f)
+        return buffer
+
+    logger.info("Firstly loading...")
     audio_index = parse_path_file(audio_index_path_file)
     mel_index = parse_path_file(mel_index_path_file)
     buffer = []
@@ -22,7 +30,7 @@ def load_data_to_buffer(audio_index_path_file, mel_index_path_file):
     min_length = 1e10
     assert len(audio_index) == len(mel_index)
     length_dataset = len(audio_index)
-    if hparams.test_size != 0:
+    if hparams.test_size != 0 and hparams.test_size < length_dataset:
         length_dataset = hparams.test_size
     for i in tqdm(range(length_dataset)):
         # assert mel_index[i].split("/")[-1].split(".")[0] == audio_index[i].split("/")[-1].split(".")[0]  # check ljspeech
@@ -34,8 +42,12 @@ def load_data_to_buffer(audio_index_path_file, mel_index_path_file):
             min_length = mel.size(0)
         buffer.append({"mel": mel, "wav": wav})
     end = time.perf_counter()
-    print(f"Cost {int(end-start)}s loading all data into buffer.")
-    print(f"Min length of mel spec in dataset is {min_length}.")
+    logger.info(f"Cost {int(end-start)}s loading all data into buffer.")
+    logger.info(f"Min length of mel spec in dataset is {min_length}.")
+
+    with open(feature_savepath, "wb") as f:
+        pickle.dump(buffer, f)
+
     return buffer
 
 
@@ -81,3 +93,7 @@ def collate_fn_tensor(batch):
     for i in range(hparams.batch_expand_size):
         output.append(reprocess_tensor(batch, cut_list[i]))
     return output
+
+
+def collate_fn_tensor_valid(batch):
+    return reprocess_tensor(batch, [0])

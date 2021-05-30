@@ -76,10 +76,10 @@ class ResBlock2(torch.nn.Module):
 class HiFiGANGenerator(torch.nn.Module):
     def __init__(self,
                  resblock_kernel_sizes=[3, 7, 11],
-                 upsample_rates=[10, 6, 2, 2],
+                 upsample_rates=[5, 4, 4, 3],  # upsample_rates=[10, 6, 2, 2],
                  upsample_initial_channel=512,
                  resblock_type="1",
-                 upsample_kernel_sizes=[16, 16, 4, 4],
+                 upsample_kernel_sizes=[17, 16, 4, 5],  # upsample_kernel_sizes=[16, 16, 4, 4],
                  resblock_dilation_sizes=[[1, 3, 5], [1, 3, 5], [1, 3, 5]]):
         super(HiFiGANGenerator, self).__init__()
         self.num_kernels = len(resblock_kernel_sizes)

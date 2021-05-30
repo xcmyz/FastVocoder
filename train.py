@@ -1,16 +1,22 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 import argparse
 import random
 import os
 import time
+import logging
+import tensorboardX
+import apex
 import hparams as hp
 import numpy as np
 
+from apex import amp
+from torch.optim import Adam, AdamW
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from datetime import datetime
 from model.loss.loss import Loss
-from optimizer import RAdam, ScheduledOptim
 from model.generator import MelGANGenerator
 from model.generator import HiFiGANGenerator
 from model.generator import MultiBandHiFiGANGenerator
@@ -18,31 +24,34 @@ from model.discriminator import Discriminator
 from model.generator.pqmf import PQMF
 
 from data.dataset import BufferDataset, DataLoader
-from data.dataset import load_data_to_buffer, collate_fn_tensor
+from data.dataset import load_data_to_buffer, collate_fn_tensor, collate_fn_tensor_valid
 from data.utils import get_param_num
 
-random.seed(str(time.time()))
-MODEL_NAME = "multiband-hifigan"
-MULTI_BAND = False
-if MODEL_NAME == "multiband-hifigan":
-    MULTI_BAND = True
+from tensorboardX import SummaryWriter
+
+random.seed(0)
+
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
+                    datefmt='%m/%d/%Y %H:%M:%S',
+                    level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def trainer(model, discriminator,
             optimizer, discriminator_optimizer,
-            scheduled_optim, discriminator_sche_optim,
+            scheduler, discriminator_scheduler,
             vocoder_loss,
             mel, wav,
             epoch, current_step, total_step,
             time_list, Start,
-            current_checkpoint_path, current_logger_path,
-            pqmf=None):
+            current_checkpoint_path, current_logger_path, tensorboard_writer,
+            pqmf=None, mixprecision=0):
     # Start
     start_time = time.perf_counter()
 
     # Init
-    scheduled_optim.zero_grad()
-    discriminator_sche_optim.zero_grad()
+    optimizer.zero_grad()
+    discriminator_optimizer.zero_grad()
 
     # Generator Forward
     est_source = model(mel)
@@ -83,22 +92,28 @@ def trainer(model, discriminator,
             total_loss = total_loss + feature_map_loss
 
     # Backward
-    total_loss.backward()
+    if mixprecision:
+        with amp.scale_loss(total_loss, optimizer) as scaled_loss:
+            scaled_loss.backward()
+    else:
+        total_loss.backward()
 
     # Clipping gradients to avoid gradient explosion
     nn.utils.clip_grad_norm_(model.parameters(), hp.grad_clip_thresh)
 
     # Update weights
-    if args.frozen_learning_rate:
-        scheduled_optim.step_and_update_lr_frozen(args.learning_rate_frozen)
-    else:
-        scheduled_optim.step_and_update_lr()
+    optimizer.step()
+    if scheduler is not None:
+        scheduler.step()
 
     #######################
     #    Discriminator    #
     #######################
     d_l = 0.
     if current_step > hp.discriminator_train_start_steps:
+        # add zero grad module
+        discriminator_optimizer.zero_grad()
+
         # re-compute y_ which leads better quality
         with torch.no_grad():
             est_source_for_d = model(mel)
@@ -121,16 +136,19 @@ def trainer(model, discriminator,
         d_l = discriminator_loss.item()
 
         # Backward
-        discriminator_loss.backward()
+        if mixprecision:
+            with amp.scale_loss(discriminator_loss, discriminator_optimizer) as discriminator_scaled_loss:
+                discriminator_scaled_loss.backward()
+        else:
+            discriminator_loss.backward()
 
         # Clipping gradients to avoid gradient explosion
         nn.utils.clip_grad_norm_(discriminator.parameters(), hp.grad_clip_thresh)
 
         # Update weights
-        if args.frozen_learning_rate:
-            discriminator_sche_optim.step_and_update_lr_frozen(args.learning_rate_discriminator_frozen)
-        else:
-            discriminator_sche_optim.step_and_update_lr()
+        discriminator_optimizer.step()
+        if discriminator_scheduler is not None:
+            discriminator_scheduler.step()
 
     # Logger
     t_l = total_loss.item()
@@ -141,22 +159,25 @@ def trainer(model, discriminator,
     with open(os.path.join(current_logger_path, "stft_loss.txt"), "a") as f_stft_loss:
         f_stft_loss.write(str(s_l)+"\n")
 
-    # Print
+    # Logging
     if current_step % hp.log_step == 0:
         Now = time.perf_counter()
 
         str1 = f"Epoch [{epoch + 1}/{hp.epochs}], Step [{current_step}/{total_step}]:"
         str2 = "STFT Loss: {:.6f}, Total Loss: {:.6f};".format(s_l, t_l)
         str3 = "Adversarial Loss: {:.6f}, Discriminator Loss: {:.6f}, Feature Map Loss: {:.6f};".format(a_l, d_l, f_l)
-        str4 = "Current Learning Rate is {:.6f}, discriminator Learning Rate is {:.6f};".format(scheduled_optim.get_learning_rate(), discriminator_sche_optim.get_learning_rate())
+        if scheduler is None:
+            str4 = "Current Learning Rate is {:.6f}, discriminator Learning Rate is {:.6f};".format(hp.learning_rate, hp.learning_rate_discriminator)
+        else:
+            str4 = "Current Learning Rate is {:.6f}, discriminator Learning Rate is {:.6f};".format(scheduler.get_last_lr()[-1], discriminator_scheduler.get_last_lr()[-1])
         str5 = "Time Used: {:.3f}s, Estimated Time Remaining: {:.3f}s.".format((Now - Start), (total_step - current_step) * np.mean(time_list))
 
-        print()
-        print(str1)
-        print(str2)
-        print(str3)
-        print(str4)
-        print(str5)
+        logger.info("\n")
+        logger.info(str1)
+        logger.info(str2)
+        logger.info(str3)
+        logger.info(str4)
+        logger.info(str5)
 
         with open(os.path.join(current_logger_path, "logger.txt"), "a") as f_logger:
             f_logger.write(str1 + "\n")
@@ -166,16 +187,26 @@ def trainer(model, discriminator,
             f_logger.write(str5 + "\n")
             f_logger.write("\n")
 
+        tensorboard_writer.add_scalar('total_loss', t_l, global_step=current_step)
+        tensorboard_writer.add_scalar('stft_loss', s_l, global_step=current_step)
+        tensorboard_writer.add_scalar('adversarial_loss', a_l, global_step=current_step)
+        tensorboard_writer.add_scalar('discriminator_loss', d_l, global_step=current_step)
+        if scheduler is not None:
+            tensorboard_writer.add_scalar('learning_rate', scheduler.get_last_lr()[-1], global_step=current_step)
+
     if current_step % hp.save_step == 0:
+        checkpoint_dict = {
+            'model': model.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            'discriminator': discriminator.state_dict(),
+            'discriminator_optimizer': discriminator_optimizer.state_dict()
+        }
+        if mixprecision:
+            checkpoint_dict.update({'amp': amp.state_dict()})
         torch.save(
-            {
-                'model': model.state_dict(),
-                'optimizer': optimizer.state_dict(),
-                'discriminator': discriminator.state_dict(),
-                'discriminator_optimizer': discriminator_optimizer.state_dict()
-            },
+            checkpoint_dict,
             os.path.join(current_checkpoint_path, 'checkpoint_%d.pth.tar' % current_step))
-        print("save model at step %d ..." % current_step)
+        logger.info("save model at step %d ..." % current_step)
 
     end_time = time.perf_counter()
     time_list = np.append(time_list, end_time - start_time)
@@ -191,37 +222,53 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Define model
-    print(f"Loading Model of {MODEL_NAME}...")
-    if MODEL_NAME == "melgan":
+    logger.info(f"Loading Model of {args.model_name}...")
+    if args.model_name == "melgan":
         model = MelGANGenerator().to(device)
-    elif MODEL_NAME == "hifigan":
+    elif args.model_name == "hifigan":
         model = HiFiGANGenerator().to(device)
-    elif MODEL_NAME == "multiband-hifigan":
+    elif args.model_name == "multiband-hifigan":
         model = MultiBandHiFiGANGenerator().to(device)
     else:
         raise Exception("no model find!")
     pqmf = None
-    if MULTI_BAND:
-        print("Define PQMF")
+    if args.multi_band:
+        logger.info("Define PQMF")
         pqmf = PQMF().to(device)
-    print("model is", model)
+    logger.info(f"model is {str(model)}")
     discriminator = Discriminator().to(device)
 
-    print("Model Has Been Defined")
+    logger.info("Model Has Been Defined")
     num_param = get_param_num(model)
-    print('Number of TTS Parameters:', num_param)
+    logger.info(f'Number of TTS Parameters: {num_param}')
 
     # Get buffer
-    print("Load data to buffer")
-    buffer = load_data_to_buffer(args.audio_index_path, args.mel_index_path)
+    logger.info("Load data to buffer")
+    buffer = load_data_to_buffer(args.audio_index_path, args.mel_index_path, logger, feature_savepath="features_train.bin")
+    logger.info("Load valid data to buffer")
+    valid_buffer = load_data_to_buffer(args.audio_index_valid_path, args.mel_index_valid_path, logger, feature_savepath="features_valid.bin")
 
     # Optimizer and loss
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate_frozen, eps=1.0e-6, weight_decay=0.0)
-    scheduled_optim = ScheduledOptim(optimizer, 256, hp.n_warm_up_step, args.restore_step)
-    discriminator_optimizer = torch.optim.Adam(discriminator.parameters(), lr=args.learning_rate_discriminator_frozen, eps=1.0e-6, weight_decay=0.0)
-    discriminator_sche_optim = ScheduledOptim(discriminator_optimizer, 256, hp.n_warm_up_step, args.restore_step)
+    if not args.mixprecision:
+        optimizer = Adam(model.parameters(), lr=args.learning_rate, eps=1.0e-6, weight_decay=0.0)
+        discriminator_optimizer = Adam(discriminator.parameters(), lr=args.learning_rate_discriminator, eps=1.0e-6, weight_decay=0.0)
+    else:
+        optimizer = apex.optimizers.FusedAdam(model.parameters(), lr=args.learning_rate)
+        discriminator_optimizer = apex.optimizers.FusedAdam(discriminator.parameters(), lr=args.learning_rate_discriminator)
+        model, optimizer = amp.initialize(model, optimizer, opt_level="O1")
+        discriminator, discriminator_optimizer = amp.initialize(discriminator, discriminator_optimizer, opt_level="O1")
+        logger.info("Start mix precision training...")
+
+    if args.use_scheduler:
+        scheduler = CosineAnnealingLR(optimizer, T_max=2500, eta_min=args.learning_rate / 10.)
+        discriminator_scheduler = CosineAnnealingLR(discriminator_optimizer,
+                                                    T_max=2500,
+                                                    eta_min=args.learning_rate_discriminator / 10.)
+    else:
+        scheduler = None
+        discriminator_scheduler = None
     vocoder_loss = Loss().to(device)
-    print("Defined Optimizer and Loss Function.")
+    logger.info("Defined Optimizer and Loss Function.")
 
     # Load checkpoint if exists
     os.makedirs(hp.checkpoint_path, exist_ok=True)
@@ -232,23 +279,27 @@ def main(args):
         model.load_state_dict(checkpoint['model'])
         optimizer.load_state_dict(checkpoint['optimizer'])
         if 'discriminator' in checkpoint:
-            print("loading discriminator")
+            logger.info("loading discriminator")
             discriminator.load_state_dict(checkpoint['discriminator'])
             discriminator_optimizer.load_state_dict(checkpoint['discriminator_optimizer'])
         os.makedirs(current_checkpoint_path, exist_ok=True)
-        print("\n---Model Restored at Step %d---\n" % args.restore_step)
+        if args.mixprecision:
+            amp.load_state_dict(checkpoint['amp'])
+        logger.info("\n---Model Restored at Step %d---\n" % args.restore_step)
     except:
-        print("\n---Start New Training---\n")
+        logger.info("\n---Start New Training---\n")
         os.makedirs(current_checkpoint_path, exist_ok=True)
 
     # Init logger
     os.makedirs(hp.logger_path, exist_ok=True)
     current_logger_path = str(datetime.now()).replace(" ", "-").replace(":", "-").replace(".", "-")
+    writer = SummaryWriter(os.path.join(hp.tensorboard_path, current_logger_path))
     current_logger_path = os.path.join(hp.logger_path, current_logger_path)
     os.makedirs(current_logger_path, exist_ok=True)
 
     # Get dataset
     dataset = BufferDataset(buffer)
+    valid_dataset = BufferDataset(valid_buffer)
 
     # Get Training Loader
     training_loader = DataLoader(dataset,
@@ -267,7 +318,6 @@ def main(args):
 
     # Training
     model = model.train()
-
     for epoch in range(hp.epochs):
         for i, batchs in enumerate(training_loader):
             preload_data = None
@@ -288,33 +338,60 @@ def main(args):
                     wav = preload_data["wav"]
                 clock_1_e = time.perf_counter()
                 time_used_1 = round(clock_1_e - clock_1_s, 5)
-                # print(f"loading data: {time_used_1}")
 
                 # Training
                 clock_2_s = time.perf_counter()
                 time_list = trainer(
                     model, discriminator,
                     optimizer, discriminator_optimizer,
-                    scheduled_optim, discriminator_sche_optim,
+                    scheduler, discriminator_scheduler,
                     vocoder_loss,
                     mel, wav,
                     epoch, current_step, total_step,
                     time_list, Start,
-                    current_checkpoint_path, current_logger_path,
-                    pqmf=pqmf)
+                    current_checkpoint_path, current_logger_path, writer,
+                    pqmf=pqmf,
+                    mixprecision=args.mixprecision)
                 clock_2_e = time.perf_counter()
                 time_used_2 = round(clock_2_e - clock_2_s, 5)
-                # print(f"training: {time_used_2}")
+
+                if current_step % hp.valid_step == 0:
+                    logger.info("Start valid...")
+                    valid_loader = DataLoader(valid_dataset, batch_size=1,
+                                              shuffle=True,
+                                              collate_fn=collate_fn_tensor_valid,
+                                              num_workers=0)
+                    valid_loss_all = 0.
+                    for ii, valid_batch in enumerate(valid_loader):
+                        valid_mel = valid_batch["mel"].float().to(device)
+                        valid_mel = valid_mel.contiguous().transpose(1, 2)
+                        valid_wav = valid_batch["wav"].float().to(device)
+                        with torch.no_grad():
+                            valid_est_source = model(valid_mel)
+                            valid_stft_loss = vocoder_loss(valid_est_source, valid_wav, pqmf=pqmf)
+                            valid_loss_all += valid_stft_loss.item()
+                        if ii == hp.valid_num:
+                            break
+                    writer.add_scalar('valid_stft_loss', valid_loss_all / float(hp.valid_num), global_step=current_step)
+
+    writer.export_scalars_to_json(os.path.join("all_scalars.json"))
+    writer.close()
+    return
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--audio_index_path', type=str, default=os.path.join("dataset", "audio", "train"))
-    parser.add_argument('--mel_index_path', type=str, default=os.path.join("dataset", "mel", "train"))
-    parser.add_argument('--checkpoint_path', type=str, default="")
-    parser.add_argument('--restore_step', type=int, default=0)
-    parser.add_argument('--frozen_learning_rate', type=bool, default=True)
-    parser.add_argument("--learning_rate_frozen", type=float, default=hp.learning_rate)
-    parser.add_argument("--learning_rate_discriminator_frozen", type=float, default=hp.learning_rate_discriminator)
+    parser.add_argument("--audio_index_path", type=str, default=os.path.join("dataset", "audio", "train"))
+    parser.add_argument("--mel_index_path", type=str, default=os.path.join("dataset", "mel", "train"))
+    parser.add_argument("--audio_index_valid_path", type=str, default=os.path.join("dataset", "audio", "valid"))
+    parser.add_argument("--mel_index_valid_path", type=str, default=os.path.join("dataset", "mel", "valid"))
+    parser.add_argument("--checkpoint_path", type=str, default="")
+    parser.add_argument("--restore_step", type=int, default=0)
+    parser.add_argument("--learning_rate", type=float, default=hp.learning_rate)
+    parser.add_argument("--learning_rate_discriminator", type=float, default=hp.learning_rate_discriminator)
+    parser.add_argument("--model_name", type=str, help="melgan, hifigan and multiband-hifigan.")
+    parser.add_argument("--multi_band", type=int, default=0)
+    parser.add_argument("--use_scheduler", type=int, default=1)
+    parser.add_argument("--mixprecision", type=int, default=0)
     args = parser.parse_args()
     main(args)

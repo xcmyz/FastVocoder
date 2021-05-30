@@ -166,3 +166,26 @@ def _denormalize(S):
 
 def _denormalize_tensorflow(S):
     return (tf.clip_by_value(S, 0, 1) * -hparams.min_level_db) + hparams.min_level_db
+
+
+def _mel_to_linear(mel_spectrogram):
+    global _inv_mel_basis
+    if _inv_mel_basis is None:
+        _inv_mel_basis = np.linalg.pinv(_build_mel_basis())
+    return np.maximum(1e-10, np.dot(_inv_mel_basis, mel_spectrogram))
+
+
+_inv_mel_basis = None
+
+
+def inv_mel_spectrogram(mel_spectrogram):
+    '''Converts mel spectrogram to waveform using librosa'''
+    if hparams.signal_normalization:
+        D = _denormalize(mel_spectrogram)
+    else:
+        D = mel_spectrogram
+
+    # Convert back to linear
+    S = _mel_to_linear(_db_to_amp(D + hparams.ref_level_db))
+
+    return inv_preemphasis(_griffin_lim(S ** hparams.power))

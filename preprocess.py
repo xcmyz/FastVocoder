@@ -8,8 +8,9 @@ import random
 from tqdm import tqdm
 from functools import partial
 from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import cpu_count
 
-CPU_NUM = 8
+CPU_NUM = cpu_count() // 2
 MULTI_PROCESS = True
 
 

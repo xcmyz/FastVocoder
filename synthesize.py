@@ -4,11 +4,10 @@ import argparse
 import numpy as np
 import hparams as hp
 
-from data.audio import save_wav
+from data.audio import save_wav, inv_mel_spectrogram
 from model.generator import MelGANGenerator
 from model.generator import MultiBandHiFiGANGenerator
 from model.generator import HiFiGANGenerator
-from train import MODEL_NAME, MULTI_BAND
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -18,12 +17,12 @@ class Synthesizer:
         self.model = self.load_model(checkpoint_path)
 
     def load_model(self, checkpoint_path):
-        print(f"Loading Model of {MODEL_NAME}...")
-        if MODEL_NAME == "melgan":
+        print(f"Loading Model of {args.model_name}...")
+        if args.model_name == "melgan":
             model = MelGANGenerator().to(device)
-        elif MODEL_NAME == "hifigan":
+        elif args.model_name == "hifigan":
             model = HiFiGANGenerator().to(device)
-        elif MODEL_NAME == "multiband-hifigan":
+        elif args.model_name == "multiband-hifigan":
             model = MultiBandHiFiGANGenerator().to(device)
         else:
             raise Exception("no model find!")
@@ -45,10 +44,13 @@ if __name__ == "__main__":
     parser.add_argument('--checkpoint_path', type=str)
     parser.add_argument('--mel_path', type=str)
     parser.add_argument('--wav_path', type=str)
+    parser.add_argument("--model_name", type=str, help="melgan, hifigan and multiband-hifigan.")
     args = parser.parse_args()
 
     synthesizer = Synthesizer(args.checkpoint_path)
-    mel = np.load(args.mel_path).T
-    est_source = synthesizer.synthesize(mel)
+    mel = np.load(args.mel_path)
+    gl_wav = inv_mel_spectrogram(mel)
+    est_source = synthesizer.synthesize(mel.T)
     est_source = est_source.cpu().numpy()
     save_wav(est_source, args.wav_path, hp.sample_rate, rescale_out=hp.rescale_out)
+    save_wav(gl_wav, args.wav_path[:-3] + "gl.wav", hp.sample_rate, rescale_out=hp.rescale_out)
