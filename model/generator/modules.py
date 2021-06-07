@@ -2,6 +2,11 @@ import math
 import torch
 import numpy as np
 import torch.nn as nn
+import torch.nn.functional as F
+
+from torch.nn import Conv1d
+
+LRELU_SLOPE = 0.1
 
 
 def get_sinusoid_encoding_table(n_position, d_hid, padding_idx=None):
@@ -84,6 +89,67 @@ class LastLayer(nn.Module):
         return x
 
 
+class Conv1d(torch.nn.Conv1d):
+    """Conv1d module with customized initialization."""
+
+    def __init__(self, *args, **kwargs):
+        """Initialize Conv1d module."""
+        super(Conv1d, self).__init__(*args, **kwargs)
+
+    def reset_parameters(self):
+        """Reset parameters."""
+        torch.nn.init.kaiming_normal_(self.weight, nonlinearity="relu")
+        if self.bias is not None:
+            torch.nn.init.constant_(self.bias, 0.0)
+
+
+class Conv1d1x1(Conv1d):
+    """1x1 Conv1d with customized initialization."""
+
+    def __init__(self, in_channels, out_channels, bias):
+        """Initialize 1x1 Conv1d module."""
+        super(Conv1d1x1, self).__init__(in_channels, out_channels,
+                                        kernel_size=1, padding=0,
+                                        dilation=1, bias=bias)
+
+
+class LastLinear(nn.Module):
+    def __init__(self, hidden_channel, out_channel):
+        super(LastLinear, self).__init__()
+        self.activation = nn.LeakyReLU(negative_slope=0.2)
+        self.bn_1 = nn.BatchNorm1d(hidden_channel)
+        self.linear_1 = Conv1d1x1(hidden_channel, hidden_channel, bias=True)
+        self.bn_2 = nn.BatchNorm1d(hidden_channel)
+        self.linear_2 = Conv1d1x1(hidden_channel, out_channel, bias=True)
+
+    def forward(self, x):
+        x = self.activation(x)
+        x = self.bn_1(x)
+        x = self.linear_1(x)
+        x = self.activation(x)
+        x = self.bn_2(x)
+        x = self.linear_2(x)
+        return x
+
+
+class UpsampleLayer(nn.Module):
+    def __init__(self,
+                 in_channel,
+                 out_channel,
+                 upsample_rate,
+                 kernel_size,
+                 stride,
+                 padding,
+                 dilation=1,
+                 bias=True):
+        super(UpsampleLayer, self).__init__()
+        self.upsample = nn.Upsample(scale_factor=upsample_rate, mode="nearest")
+        self.conv = nn.Conv1d(in_channel, out_channel, kernel_size, stride, padding, dilation=dilation, bias=bias)
+
+    def forward(self, x):
+        return self.conv(self.upsample(x))
+
+
 def init_weights(m, mean=0.0, std=0.01):
     classname = m.__class__.__name__
     if classname.find("Conv") != -1:
@@ -92,3 +158,82 @@ def init_weights(m, mean=0.0, std=0.01):
 
 def get_padding(kernel_size, dilation=1):
     return int((kernel_size*dilation - dilation)/2)
+
+
+class ResBlock1(torch.nn.Module):
+    def __init__(self, channels, kernel_size=3, dilation=(1, 3, 5), bias=True):
+        super(ResBlock1, self).__init__()
+        self.convs1 = nn.ModuleList([
+            Conv1d(channels, channels,
+                   kernel_size, 1,
+                   dilation=dilation[0], padding=get_padding(kernel_size, dilation[0]),
+                   bias=bias),
+            Conv1d(channels, channels,
+                   kernel_size, 1,
+                   dilation=dilation[1], padding=get_padding(kernel_size, dilation[1]),
+                   bias=bias),
+            Conv1d(channels, channels,
+                   kernel_size, 1,
+                   dilation=dilation[2], padding=get_padding(kernel_size, dilation[2]),
+                   bias=bias)
+        ])
+
+        self.convs2 = nn.ModuleList([
+            Conv1d(channels, channels,
+                   kernel_size, 1,
+                   dilation=1, padding=get_padding(kernel_size, 1),
+                   bias=bias),
+            Conv1d(channels, channels,
+                   kernel_size, 1,
+                   dilation=1, padding=get_padding(kernel_size, 1),
+                   bias=bias),
+            Conv1d(channels, channels,
+                   kernel_size, 1,
+                   dilation=1, padding=get_padding(kernel_size, 1),
+                   bias=bias)
+        ])
+
+    def forward(self, x):
+        for c1, c2 in zip(self.convs1, self.convs2):
+            xt = F.leaky_relu(x, LRELU_SLOPE)
+            xt = c1(xt)
+            xt = F.leaky_relu(xt, LRELU_SLOPE)
+            xt = c2(xt)
+            x = xt + x
+        return x
+
+
+class ResBlock2(torch.nn.Module):
+    def __init__(self, channels, kernel_size=3, dilation=(1, 3), bias=True):
+        super(ResBlock2, self).__init__()
+        self.convs = nn.ModuleList([
+            Conv1d(channels, channels,
+                   kernel_size, 1,
+                   dilation=dilation[0], padding=get_padding(kernel_size, dilation[0]),
+                   bias=bias),
+            Conv1d(channels, channels,
+                   kernel_size, 1,
+                   dilation=dilation[1], padding=get_padding(kernel_size, dilation[1]),
+                   bias=bias)
+        ])
+
+    def forward(self, x):
+        for c in self.convs:
+            xt = F.leaky_relu(x, LRELU_SLOPE)
+            xt = c(xt)
+            x = xt + x
+        return x
+
+
+class BasisSignalLayer(nn.Module):
+    """ Basis Signal """
+
+    def __init__(self, L, N):
+        super(BasisSignalLayer, self).__init__()
+        self.layer = nn.Linear(N, L, bias=False)
+        self.L = L
+
+    def forward(self, weight):
+        source = self.layer(weight)
+        source = overlap_and_add(source, self.L // 2)
+        return source

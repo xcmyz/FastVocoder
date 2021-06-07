@@ -134,6 +134,7 @@ class MultiResolutionSTFTLoss(torch.nn.Module):
             window (str): Window function type.
 
         """
+
         super(MultiResolutionSTFTLoss, self).__init__()
         assert len(fft_sizes) == len(hop_sizes) == len(win_lengths)
         self.stft_losses = torch.nn.ModuleList()

@@ -1,3 +1,4 @@
 from .hifigan import HiFiGANGenerator
-from .melgan import MelGANGenerator
 from .multiband_hifigan import MultiBandHiFiGANGenerator
+from .melgan import MelGANGenerator
+from .basis_melgan import BasisMelGANGenerator

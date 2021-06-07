@@ -8,11 +8,10 @@ import os
 import time
 import logging
 import tensorboardX
-import apex
+import yaml
 import hparams as hp
 import numpy as np
 
-from apex import amp
 from torch.optim import Adam, AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from datetime import datetime
@@ -20,6 +19,7 @@ from model.loss.loss import Loss
 from model.generator import MelGANGenerator
 from model.generator import HiFiGANGenerator
 from model.generator import MultiBandHiFiGANGenerator
+from model.generator.basis_melgan import BasisMelGANGenerator
 from model.discriminator import Discriminator
 from model.generator.pqmf import PQMF
 
@@ -35,6 +35,13 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s
                     datefmt='%m/%d/%Y %H:%M:%S',
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+try:
+    import apex
+    from apex import amp
+except:
+    logger.info("Cannot load Apex (Using apex to accelerate training.)")
 
 
 def trainer(model, discriminator,
@@ -59,6 +66,8 @@ def trainer(model, discriminator,
     # Cal Loss
     total_loss = 0.
     stft_loss = vocoder_loss(est_source, wav, pqmf=pqmf)
+    s_l = stft_loss.item()
+    stft_loss = hp.lambda_stft * stft_loss
     total_loss = total_loss + stft_loss
 
     # Adversarial
@@ -72,7 +81,7 @@ def trainer(model, discriminator,
         # for multi-scale discriminator
         adversarial_loss = 0.0
         for ii in range(len(est_p)):
-            adversarial_loss += nn.BCEWithLogitsLoss()(est_p[ii][-1], est_p[ii][-1].new_ones(est_p[ii][-1].size()))
+            adversarial_loss += nn.MSELoss()(est_p[ii][-1], est_p[ii][-1].new_ones(est_p[ii][-1].size()))
         adversarial_loss /= float(len(est_p))
         a_l = adversarial_loss.item()
         adversarial_loss = hp.lambda_adv * adversarial_loss
@@ -89,6 +98,7 @@ def trainer(model, discriminator,
                     feature_map_loss += nn.L1Loss()(est_p[ii][jj], p[ii][jj].detach())
             feature_map_loss /= (float(len(est_p)) * float(len(est_p[0]) - 1))
             f_l = feature_map_loss.item()
+            feature_map_loss = hp.lambda_fm * feature_map_loss
             total_loss = total_loss + feature_map_loss
 
     # Backward
@@ -99,7 +109,10 @@ def trainer(model, discriminator,
         total_loss.backward()
 
     # Clipping gradients to avoid gradient explosion
-    nn.utils.clip_grad_norm_(model.parameters(), hp.grad_clip_thresh)
+    if mixprecision:
+        nn.utils.clip_grad_norm_(amp.master_params(optimizer), hp.grad_clip_thresh)
+    else:
+        nn.utils.clip_grad_norm_(model.parameters(), hp.grad_clip_thresh)
 
     # Update weights
     optimizer.step()
@@ -128,8 +141,8 @@ def trainer(model, discriminator,
         real_loss = 0.0
         fake_loss = 0.0
         for ii in range(len(p)):
-            real_loss += nn.BCEWithLogitsLoss()(p[ii][-1], p[ii][-1].new_ones(p[ii][-1].size()))
-            fake_loss += nn.BCEWithLogitsLoss()(est_p_for_d[ii][-1], est_p_for_d[ii][-1].new_zeros(est_p_for_d[ii][-1].size()))
+            real_loss += nn.MSELoss()(p[ii][-1], p[ii][-1].new_ones(p[ii][-1].size()))
+            fake_loss += nn.MSELoss()(est_p_for_d[ii][-1], est_p_for_d[ii][-1].new_zeros(est_p_for_d[ii][-1].size()))
         real_loss /= float(len(p))
         fake_loss /= float(len(p))
         discriminator_loss = real_loss + fake_loss
@@ -143,7 +156,10 @@ def trainer(model, discriminator,
             discriminator_loss.backward()
 
         # Clipping gradients to avoid gradient explosion
-        nn.utils.clip_grad_norm_(discriminator.parameters(), hp.grad_clip_thresh)
+        if mixprecision:
+            nn.utils.clip_grad_norm_(amp.master_params(discriminator_optimizer), hp.grad_clip_thresh)
+        else:
+            nn.utils.clip_grad_norm_(discriminator.parameters(), hp.grad_clip_thresh)
 
         # Update weights
         discriminator_optimizer.step()
@@ -152,8 +168,6 @@ def trainer(model, discriminator,
 
     # Logger
     t_l = total_loss.item()
-    s_l = stft_loss.item()
-
     with open(os.path.join(current_logger_path, "total_loss.txt"), "a") as f_total_loss:
         f_total_loss.write(str(t_l)+"\n")
     with open(os.path.join(current_logger_path, "stft_loss.txt"), "a") as f_stft_loss:
@@ -191,6 +205,7 @@ def trainer(model, discriminator,
         tensorboard_writer.add_scalar('stft_loss', s_l, global_step=current_step)
         tensorboard_writer.add_scalar('adversarial_loss', a_l, global_step=current_step)
         tensorboard_writer.add_scalar('discriminator_loss', d_l, global_step=current_step)
+        tensorboard_writer.add_scalar('feature_map_loss', f_l, global_step=current_step)
         if scheduler is not None:
             tensorboard_writer.add_scalar('learning_rate', scheduler.get_last_lr()[-1], global_step=current_step)
 
@@ -217,18 +232,55 @@ def trainer(model, discriminator,
     return time_list
 
 
-def main(args):
+def run(args):
     # Get device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Define model
     logger.info(f"Loading Model of {args.model_name}...")
+    with open(args.config) as f:
+        config = yaml.load(f, Loader=yaml.Loader)
+    hp.lambda_stft = config["lamda_stft"]
+
     if args.model_name == "melgan":
-        model = MelGANGenerator().to(device)
+        model = MelGANGenerator(in_channels=config["in_channels"],
+                                out_channels=config["out_channels"],
+                                kernel_size=config["kernel_size"],
+                                channels=config["channels"],
+                                upsample_scales=config["upsample_scales"],
+                                stack_kernel_size=config["stack_kernel_size"],
+                                stacks=config["stacks"],
+                                use_weight_norm=config["use_weight_norm"],
+                                use_causal_conv=config["use_causal_conv"]).to(device)
     elif args.model_name == "hifigan":
-        model = HiFiGANGenerator().to(device)
+        model = HiFiGANGenerator(resblock_kernel_sizes=config["resblock_kernel_sizes"],
+                                 upsample_rates=config["upsample_rates"],
+                                 upsample_initial_channel=config["upsample_initial_channel"],
+                                 resblock_type=config["resblock_type"],
+                                 upsample_kernel_sizes=config["upsample_kernel_sizes"],
+                                 resblock_dilation_sizes=config["resblock_dilation_sizes"],
+                                 transposedconv=config["transposedconv"],
+                                 bias=config["bias"]).to(device)
     elif args.model_name == "multiband-hifigan":
-        model = MultiBandHiFiGANGenerator().to(device)
+        model = MultiBandHiFiGANGenerator(resblock_kernel_sizes=config["resblock_kernel_sizes"],
+                                          upsample_rates=config["upsample_rates"],
+                                          upsample_initial_channel=config["upsample_initial_channel"],
+                                          resblock_type=config["resblock_type"],
+                                          upsample_kernel_sizes=config["upsample_kernel_sizes"],
+                                          resblock_dilation_sizes=config["resblock_dilation_sizes"],
+                                          transposedconv=config["transposedconv"],
+                                          bias=config["bias"]).to(device)
+    elif args.model_name == "basis-melgan":
+        model = BasisMelGANGenerator(L=config["L"],
+                                     in_channels=config["in_channels"],
+                                     out_channels=config["out_channels"],
+                                     kernel_size=config["kernel_size"],
+                                     channels=config["channels"],
+                                     upsample_scales=config["upsample_scales"],
+                                     stack_kernel_size=config["stack_kernel_size"],
+                                     stacks=config["stacks"],
+                                     use_weight_norm=config["use_weight_norm"],
+                                     use_causal_conv=config["use_causal_conv"]).to(device)
     else:
         raise Exception("no model find!")
     pqmf = None
@@ -255,7 +307,7 @@ def main(args):
     else:
         optimizer = apex.optimizers.FusedAdam(model.parameters(), lr=args.learning_rate)
         discriminator_optimizer = apex.optimizers.FusedAdam(discriminator.parameters(), lr=args.learning_rate_discriminator)
-        model, optimizer = amp.initialize(model, optimizer, opt_level="O1")
+        model, optimizer = amp.initialize(model, optimizer, opt_level="O1", keep_batchnorm_fp32=None)
         discriminator, discriminator_optimizer = amp.initialize(discriminator, discriminator_optimizer, opt_level="O1")
         logger.info("Start mix precision training...")
 
@@ -379,7 +431,7 @@ def main(args):
     return
 
 
-if __name__ == "__main__":
+def run_train():
     parser = argparse.ArgumentParser()
     parser.add_argument("--audio_index_path", type=str, default=os.path.join("dataset", "audio", "train"))
     parser.add_argument("--mel_index_path", type=str, default=os.path.join("dataset", "mel", "train"))
@@ -391,7 +443,8 @@ if __name__ == "__main__":
     parser.add_argument("--learning_rate_discriminator", type=float, default=hp.learning_rate_discriminator)
     parser.add_argument("--model_name", type=str, help="melgan, hifigan and multiband-hifigan.")
     parser.add_argument("--multi_band", type=int, default=0)
-    parser.add_argument("--use_scheduler", type=int, default=1)
+    parser.add_argument("--use_scheduler", type=int, default=0)
     parser.add_argument("--mixprecision", type=int, default=0)
+    parser.add_argument("--config", type=str, help="path to model configuration file")
     args = parser.parse_args()
-    main(args)
+    run(args)

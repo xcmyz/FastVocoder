@@ -7,24 +7,30 @@
 
 import torch
 import logging
-import numpy as np
 import hparams as hp
+import numpy as np
 
-from .modules import LastLayer
 from model.layers import ResidualStack
+from .modules import BasisSignalLayer, LastLinear
+
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
+                    datefmt='%m/%d/%Y %H:%M:%S',
+                    level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
-class MelGANGenerator(torch.nn.Module):
+class BasisMelGANGenerator(torch.nn.Module):
     """MelGAN generator module."""
 
     def __init__(self,
+                 L=24,
                  in_channels=80,
-                 out_channels=1,
+                 out_channels=256,
                  kernel_size=7,
-                 channels=[512, 256, 128, 64, 32],
+                 channels=[384, 384, 384],
                  bias=True,
-                 upsample_scales=[10, 6, 2, 2],
-                 stack_kernel_size=3,
+                 upsample_scales=[5, 4],
+                 stack_kernel_size=5,
                  stacks=3,
                  nonlinear_activation="LeakyReLU",
                  nonlinear_activation_params={"negative_slope": 0.2},
@@ -35,7 +41,6 @@ class MelGANGenerator(torch.nn.Module):
                  use_causal_conv=False,
                  ):
         """Initialize MelGANGenerator module.
-
         Args:
             in_channels (int): Number of input channels.
             out_channels (int): Number of output channels.
@@ -53,9 +58,8 @@ class MelGANGenerator(torch.nn.Module):
             use_weight_norm (bool): Whether to use weight norm.
                 If set to true, it will be applied to all of the conv layers.
             use_causal_conv (bool): Whether to use causal convolution.
-
         """
-        super(MelGANGenerator, self).__init__()
+        super(BasisMelGANGenerator, self).__init__()
 
         # check hyper parameters is valid
         # assert channels >= np.prod(upsample_scales)
@@ -76,7 +80,7 @@ class MelGANGenerator(torch.nn.Module):
             layers += [
                 torch.nn.ConvTranspose1d(
                     channels[i],
-                    channels[i+1],
+                    channels[i + 1],
                     upsample_scale * 2,
                     stride=upsample_scale,
                     padding=upsample_scale // 2 + upsample_scale % 2,
@@ -90,7 +94,7 @@ class MelGANGenerator(torch.nn.Module):
                 layers += [
                     ResidualStack(
                         kernel_size=stack_kernel_size,
-                        channels=channels[i+1],
+                        channels=channels[i + 1],
                         dilation=stack_kernel_size ** j,
                         bias=bias,
                         nonlinear_activation=nonlinear_activation,
@@ -102,15 +106,17 @@ class MelGANGenerator(torch.nn.Module):
                 ]
 
         # add final layer
-        layers += [LastLayer(channels[-1], out_channels,
-                             nonlinear_activation, nonlinear_activation_params,
-                             pad, kernel_size, pad_params, bias)]
+        layers += [LastLinear(channels[-1], out_channels)]
 
         if use_final_nonlinear_activation:
-            layers += [torch.nn.Tanh()]
+            layers += [torch.nn.ReLU()]
 
         # define the model as a single function
         self.melgan = torch.nn.Sequential(*layers)
+
+        # basis signal
+        self.L = L
+        self.basis_signal = BasisSignalLayer(L=L, N=out_channels)
 
         # apply weight norm
         if use_weight_norm:
@@ -124,15 +130,18 @@ class MelGANGenerator(torch.nn.Module):
 
     def forward(self, c):
         """Calculate forward propagation.
-
         Args:
             c (Tensor): Input tensor (B, channels, T).
-
         Returns:
             Tensor: Output tensor (B, 1, T ** prod(upsample_scales)).
-
         """
-        est_source = self.melgan(c)[:, 0, :]
+        weight = self.melgan(c)
+        weight = weight.contiguous().transpose(1, 2)
+        weight_average = weight.sum() / (weight.size(0) * weight.size(1) * weight.size(2))
+        weight_average = round(weight_average.item(), 6)
+        logger.info(f"weight average value: {weight_average}")
+        est_source = self.basis_signal(weight)
+        est_source = est_source[:, :weight.size(1) * (self.L // 2)]
         return est_source
 
     def remove_weight_norm(self):
@@ -157,10 +166,8 @@ class MelGANGenerator(torch.nn.Module):
 
     def reset_parameters(self):
         """Reset parameters.
-
         This initialization follows official implementation manner.
         https://github.com/descriptinc/melgan-neurips/blob/master/mel2wav/modules.py
-
         """
         def _reset_parameters(m):
             if isinstance(m, torch.nn.Conv1d) or isinstance(m, torch.nn.ConvTranspose1d):
@@ -171,15 +178,14 @@ class MelGANGenerator(torch.nn.Module):
 
     def inference(self, c):
         """Perform inference.
-
         Args:
             c (Union[Tensor, ndarray]): Input tensor (T, in_channels).
-
         Returns:
             Tensor: Output tensor (T ** prod(upsample_scales), out_channels).
-
         """
         if not isinstance(c, torch.Tensor):
             c = torch.tensor(c, dtype=torch.float).to(next(self.parameters()).device)
-        c = self.melgan(c.transpose(1, 0).unsqueeze(0))
+        weight = self.melgan(c.transpose(1, 0).unsqueeze(0))
+        weight = weight.contiguous().transpose(1, 2)
+        c = self.basis_signal(weight)
         return c.squeeze()

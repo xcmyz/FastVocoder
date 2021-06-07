@@ -79,7 +79,7 @@ def write_file(audio_index, mel_index, index_list, file_name, audio_index_path, 
             f.write(mel_index[index] + "\n")
 
 
-if __name__ == "__main__":
+def run_preprocess():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path', type=str, default=os.path.join("dataset", "ljspeech.txt"))
     parser.add_argument('--save_path', type=str, default=os.path.join("dataset", "processed"))

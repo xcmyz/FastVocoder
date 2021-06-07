@@ -6,7 +6,7 @@ import hparams as hp
 
 from data.utils import parse_path_file
 from model.generator.melgan import MelGANGenerator
-from synthesize import Synthesizer
+from .synthesize import Synthesizer
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

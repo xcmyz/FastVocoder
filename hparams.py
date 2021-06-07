@@ -24,13 +24,13 @@ train_size = 9000
 valid_size = 500
 eval_size = 100
 
-epochs = 100000
+epochs = 100000  # need stop by your hands
 batch_size = 32
 batch_expand_size = 8
-discriminator_train_start_steps = 30000
+discriminator_train_start_steps = 100000
 n_warm_up_step = 0
 
-use_feature_map_loss = False
+use_feature_map_loss = True
 
 learning_rate = 1e-4
 learning_rate_discriminator = 5e-5
@@ -39,6 +39,7 @@ grad_clip_thresh = 1.0
 
 log_step = 5
 clear_time = 20
+
 save_step = 5000
 valid_step = 500
 valid_num = 100
@@ -47,5 +48,8 @@ checkpoint_path = os.path.join("checkpoint")
 logger_path = os.path.join("logger")
 tensorboard_path = os.path.join("tensorboard")
 
-fixed_length = 140
-lambda_adv = 1.
+fixed_length = 140  # biaobei
+
+lambda_adv = 1.0
+lambda_fm = 1.0
+lambda_stft = 5.0
