@@ -140,7 +140,7 @@ cython_debug/
 # Me
 .vscode
 .DS_store
-test*
+/test*
 dataset/*
 !dataset/aishell3.py
 !dataset/biaobei.py
