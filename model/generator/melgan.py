@@ -11,7 +11,7 @@ import numpy as np
 import hparams as hp
 
 from .modules import LastLayer
-from model.layers import ResidualStack
+from .modules import ResidualStack
 
 
 class MelGANGenerator(torch.nn.Module):

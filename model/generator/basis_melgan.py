@@ -10,7 +10,7 @@ import logging
 import hparams as hp
 import numpy as np
 
-from model.layers import ResidualStack
+from .modules import ResidualStack
 from .modules import BasisSignalLayer, LastLinear
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',

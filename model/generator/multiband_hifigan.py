@@ -6,7 +6,7 @@ import torch.nn as nn
 import logging
 
 from torch.nn import Conv1d, ConvTranspose1d
-from .modules import get_padding, UpsampleLayer
+from .modules import UpsampleLayer
 from .modules import ResBlock1, ResBlock2, LRELU_SLOPE
 from .pqmf import PQMF
 
