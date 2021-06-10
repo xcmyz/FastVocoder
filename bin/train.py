@@ -52,6 +52,7 @@ def trainer(model, discriminator,
             epoch, current_step, total_step,
             time_list, Start,
             current_checkpoint_path, current_logger_path, tensorboard_writer,
+            weight=None, basis_signal_optimizer=None,
             pqmf=None, mixprecision=0):
     # Start
     start_time = time.perf_counter()
@@ -59,16 +60,25 @@ def trainer(model, discriminator,
     # Init
     optimizer.zero_grad()
     discriminator_optimizer.zero_grad()
+    if basis_signal_optimizer is None:
+        basis_signal_optimizer.zero_grad()
 
     # Generator Forward
-    est_source = model(mel)
+    est_weight = None
+    if weight is None:
+        est_source = model(mel)
+    else:
+        est_source, est_weight = model(mel)
 
     # Cal Loss
     total_loss = 0.
-    stft_loss = vocoder_loss(est_source, wav, pqmf=pqmf)
+    stft_loss, weight_loss = vocoder_loss(est_source, wav, pqmf=pqmf, weight=weight, est_weight=est_weight)
     s_l = stft_loss.item()
     stft_loss = hp.lambda_stft * stft_loss
     total_loss = total_loss + stft_loss
+    if weight_loss is not None and current_step <= hp.discriminator_train_start_steps:
+        w_l = weight_loss.item()
+        total_loss += weight_loss
 
     # Adversarial
     a_l = 0.
@@ -206,6 +216,8 @@ def trainer(model, discriminator,
         tensorboard_writer.add_scalar('adversarial_loss', a_l, global_step=current_step)
         tensorboard_writer.add_scalar('discriminator_loss', d_l, global_step=current_step)
         tensorboard_writer.add_scalar('feature_map_loss', f_l, global_step=current_step)
+        if weight_loss is not None:
+            tensorboard_writer.add_scalar('weight_loss', w_l, global_step=current_step)
         if scheduler is not None:
             tensorboard_writer.add_scalar('learning_rate', scheduler.get_last_lr()[-1], global_step=current_step)
 
@@ -375,7 +387,7 @@ def run(args):
                                  shuffle=True,
                                  collate_fn=collate_fn_tensor,
                                  drop_last=True,
-                                 num_workers=4,
+                                 num_workers=0,
                                  prefetch_factor=2,
                                  pin_memory=True)
     total_step = hp.epochs * len(training_loader) * hp.batch_expand_size
@@ -398,6 +410,8 @@ def run(args):
                 mel = db["mel"].float().to(device)
                 wav = db["wav"].float().to(device)
                 mel = mel.contiguous().transpose(1, 2)
+                if "weight" in db:
+                    weight = db["weight"].float().to(device)
                 clock_1_e = time.perf_counter()
                 time_used_1 = round(clock_1_e - clock_1_s, 5)
 
@@ -412,6 +426,8 @@ def run(args):
                     epoch, current_step, total_step,
                     time_list, Start,
                     current_checkpoint_path, current_logger_path, writer,
+                    weight=weight,
+                    basis_signal_optimizer=basis_signal_optimizer,
                     pqmf=pqmf,
                     mixprecision=args.mixprecision)
                 clock_2_e = time.perf_counter()
