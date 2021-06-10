@@ -73,12 +73,53 @@ class BufferDataset(Dataset):
         return buffer_cut
 
 
+class OriginalDataset(Dataset):
+    def __init__(self, audio_index_file_path, mel_index_file_path, weight_index_file_path, L):
+        self.audio_index = parse_path_file(audio_index_file_path)
+        self.mel_index = parse_path_file(mel_index_file_path)
+        self.weight_index = parse_path_file(weight_index_file_path)
+        assert (len(self.audio_index) == len(self.mel_index)) and (len(self.mel_index) == len(self.weight_index))
+        self.L = L
+
+    def __len__(self):
+        return len(self.audio_index)
+
+    def __getitem__(self, idx):
+        mel = np.load(self.mel_index[idx]).T
+        mel = torch.from_numpy(mel)
+        wav = np.load(self.audio_index[idx])
+        wav = torch.from_numpy(wav)
+        weight = np.load(self.weight_index[idx])
+        weight = torch.from_numpy(weight)
+        data = {"mel": mel, "wav": wav, "weight": weight}
+
+        len_data = data["mel"].size(0)
+        start_index = random.randint(0, len_data - hparams.fixed_length - 1)
+        end_index = start_index + hparams.fixed_length
+        weight_start_index = start_index * (self.L // 2)
+        weight_end_index = end_index * (self.L // 2)
+        wav_start_index = start_index * hparams.hop_size
+        wav_end_index = end_index * hparams.hop_size
+        buffer_cut = {
+            "mel": data["mel"][start_index:end_index, :],
+            "wav": data["wav"][wav_start_index:wav_end_index],
+            "weight": data["weight"][weight_start_index:weight_end_index, :]
+        }
+        return buffer_cut
+
+
 def reprocess_tensor(batch, cut_list):
     mels = [batch[i]["mel"] for i in cut_list]
     wavs = [batch[i]["wav"] for i in cut_list]
     wavs = pad_1D_tensor(wavs)
     mels = pad_2D_tensor(mels)
-    return {"mel": mels, "wav": wavs}
+
+    if "weight" in batch[0]:
+        weights = [batch[i]["weight"] for i in cut_list]
+        weights = pad_2D_tensor(weights)
+        return {"mel": mels, "wav": wavs, "weight": weights}
+    else:
+        return {"mel": mels, "wav": wavs}
 
 
 def collate_fn_tensor(batch):
