@@ -4,6 +4,8 @@
 ## Todo
 
 - [x] Support Basis-MelGAN
+- [ ] Add more demo
+- [ ] Add pretrained model
 - [ ] Support NHV
 
 ## Discription
@@ -14,6 +16,7 @@ Include **Basis-MelGAN**, MelGAN, HifiGAN and Multiband-HifiGAN, maybe include [
 
 - [Demo README](/resource/demo/README.md)
 - [Basis-MelGAN demo page](https://blog.xcmyz.xyz/demo/)
+- [Pretrained Model]()
 
 ## Usage (of Basis-MelGAN)
 
