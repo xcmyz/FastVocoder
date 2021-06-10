@@ -23,7 +23,7 @@ from model.generator.basis_melgan import BasisMelGANGenerator
 from model.discriminator import Discriminator
 from model.generator.pqmf import PQMF
 
-from data.dataset import BufferDataset, DataLoader
+from data.dataset import BufferDataset, OriginalDataset, DataLoader
 from data.dataset import load_data_to_buffer, collate_fn_tensor, collate_fn_tensor_valid
 from data.utils import get_param_num
 
@@ -271,7 +271,10 @@ def run(args):
                                           transposedconv=config["transposedconv"],
                                           bias=config["bias"]).to(device)
     elif args.model_name == "basis-melgan":
-        model = BasisMelGANGenerator(L=config["L"],
+        basis_signal_weight = np.load(os.path.join("Basis-MelGAN-dataset", "basis_signal_weight.npy"))
+        basis_signal_weight = torch.from_numpy(basis_signal_weight)
+        model = BasisMelGANGenerator(basis_signal_weight=basis_signal_weight,
+                                     L=config["L"],
                                      in_channels=config["in_channels"],
                                      out_channels=config["out_channels"],
                                      kernel_size=config["kernel_size"],
@@ -284,7 +287,7 @@ def run(args):
     else:
         raise Exception("no model find!")
     pqmf = None
-    if args.multi_band:
+    if config["multiband"] == True:
         logger.info("Define PQMF")
         pqmf = PQMF().to(device)
     logger.info(f"model is {str(model)}")
@@ -294,17 +297,18 @@ def run(args):
     num_param = get_param_num(model)
     logger.info(f'Number of TTS Parameters: {num_param}')
 
-    # Get buffer
-    logger.info("Load data to buffer")
-    buffer = load_data_to_buffer(args.audio_index_path, args.mel_index_path, logger, feature_savepath="features_train.bin")
-    logger.info("Load valid data to buffer")
-    valid_buffer = load_data_to_buffer(args.audio_index_valid_path, args.mel_index_valid_path, logger, feature_savepath="features_valid.bin")
-
     # Optimizer and loss
     if not args.mixprecision:
-        optimizer = Adam(model.parameters(), lr=args.learning_rate, eps=1.0e-6, weight_decay=0.0)
+        if args.model_name == "basis-melgan":
+            optimizer = Adam(model.melgan.parameters(), lr=args.learning_rate, eps=1.0e-6, weight_decay=0.0)
+            # freeze basis signal layer
+            basis_signal_optimizer = Adam(model.basis_signal.parameters())
+        else:
+            optimizer = Adam(model.parameters(), lr=args.learning_rate, eps=1.0e-6, weight_decay=0.0)
         discriminator_optimizer = Adam(discriminator.parameters(), lr=args.learning_rate_discriminator, eps=1.0e-6, weight_decay=0.0)
     else:
+        if args.model_name == "basis-melgan":
+            raise Exception("basis melgan don't support amp!")
         optimizer = apex.optimizers.FusedAdam(model.parameters(), lr=args.learning_rate)
         discriminator_optimizer = apex.optimizers.FusedAdam(discriminator.parameters(), lr=args.learning_rate_discriminator)
         model, optimizer = amp.initialize(model, optimizer, opt_level="O1", keep_batchnorm_fp32=None)
@@ -349,9 +353,26 @@ def run(args):
     current_logger_path = os.path.join(hp.logger_path, current_logger_path)
     os.makedirs(current_logger_path, exist_ok=True)
 
+    # Get buffer
+    if args.model_name != "basis-melgan":
+        logger.info("Load data to buffer")
+        buffer = load_data_to_buffer(args.audio_index_path, args.mel_index_path, logger, feature_savepath="features_train.bin")
+        logger.info("Load valid data to buffer")
+        valid_buffer = load_data_to_buffer(args.audio_index_valid_path, args.mel_index_valid_path, logger, feature_savepath="features_valid.bin")
+
     # Get dataset
-    dataset = BufferDataset(buffer)
-    valid_dataset = BufferDataset(valid_buffer)
+    if args.model_name == "basis-melgan":
+        dataset = OriginalDataset(args.audio_index_path,
+                                  args.mel_index_path,
+                                  args.weight_index_path,
+                                  config["L"])
+        valid_dataset = OriginalDataset(args.audio_index_valid_path,
+                                        args.mel_index_valid_path,
+                                        args.weight_index_valid_path,
+                                        config["L"])
+    else:
+        dataset = BufferDataset(buffer)
+        valid_dataset = BufferDataset(valid_buffer)
 
     # Get Training Loader
     training_loader = DataLoader(dataset,
@@ -435,16 +456,23 @@ def run_train():
     parser = argparse.ArgumentParser()
     parser.add_argument("--audio_index_path", type=str, default=os.path.join("dataset", "audio", "train"))
     parser.add_argument("--mel_index_path", type=str, default=os.path.join("dataset", "mel", "train"))
+    parser.add_argument("--weight_index_path", type=str, default=os.path.join("dataset", "weight", "train"))
+
     parser.add_argument("--audio_index_valid_path", type=str, default=os.path.join("dataset", "audio", "valid"))
     parser.add_argument("--mel_index_valid_path", type=str, default=os.path.join("dataset", "mel", "valid"))
+    parser.add_argument("--weight_index_valid_path", type=str, default=os.path.join("dataset", "weight", "valid"))
+
     parser.add_argument("--checkpoint_path", type=str, default="")
     parser.add_argument("--restore_step", type=int, default=0)
+
     parser.add_argument("--learning_rate", type=float, default=hp.learning_rate)
     parser.add_argument("--learning_rate_discriminator", type=float, default=hp.learning_rate_discriminator)
+
     parser.add_argument("--model_name", type=str, help="melgan, hifigan and multiband-hifigan.")
-    parser.add_argument("--multi_band", type=int, default=0)
+    parser.add_argument("--config", type=str, help="path to model configuration file")
+
     parser.add_argument("--use_scheduler", type=int, default=0)
     parser.add_argument("--mixprecision", type=int, default=0)
-    parser.add_argument("--config", type=str, help="path to model configuration file")
+
     args = parser.parse_args()
     run(args)
