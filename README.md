@@ -37,9 +37,9 @@ bash train.sh \
     /path/to/mel/train \
     /path/to/mel/valid \
     <model name> \
-    <if multi band> \
+    <path to configuration file> \
     <if use scheduler> \
-    <path to configuration file>
+    <if mix precision training>
 ```
 
 - for example:
@@ -51,8 +51,8 @@ bash train.sh \
     dataset/mel/train \
     dataset/mel/valid \
     hifigan \
-    0 0 0 \
-    conf/hifigan/light.yaml
+    conf/hifigan/light.yaml \
+    0 0
 ```
 
 ### 4. Train from checkpoint
@@ -65,9 +65,9 @@ bash train.sh \
     /path/to/mel/train \
     /path/to/mel/valid \
     <model name> \
-    <if multi band> \
-    <if use scheduler> \
     <path to configuration file> \
+    <if use scheduler> \
+    <if mix precision training> \
     /path/to/checkpoint \
     <step of checkpoint>
 ```
@@ -85,62 +85,66 @@ bash synthesize.sh \
 
 ## Usage (of MelGAN, HifiGAN and Multiband-HifiGAN)
 
-- Prepare data
-    - write path of wav data in a file, for example: ``` cd dataset && python3 biaobei.py ```
-    - ``` bash preprocess.sh <wav path file> <path to save processed data> dataset/audio dataset/mel ```
-    - for example: ``` bash preprocess.sh dataset/BZNSYP.txt processed dataset/audio dataset/mel ```
-- Train
-    - command:
-    ```
-    bash train.sh \
-        <GPU ids> \
-        /path/to/audio/train \
-        /path/to/audio/valid \
-        /path/to/mel/train \
-        /path/to/mel/valid \
-        <model name> \
-        <if multi band> \
-        <if use scheduler> \
-        <path to configuration file>
-    ```
-    - for example:
-    ```
-    bash train.sh \
+### 1. Prepare data
+
+- write path of wav data in a file, for example: ``` cd dataset && python3 biaobei.py ```
+- ``` bash preprocess.sh <wav path file> <path to save processed data> dataset/audio dataset/mel ```
+- for example: ``` bash preprocess.sh dataset/BZNSYP.txt processed dataset/audio dataset/mel ```
+
+### 2. Train
+- command:
+```
+bash train.sh \
+    <GPU ids> \
+    /path/to/audio/train \
+    /path/to/audio/valid \
+    /path/to/mel/train \
+    /path/to/mel/valid \
+    <model name> \
+    <path to configuration file> \
+    <if use scheduler> \
+    <if mix precision training>
+```
+- for example:
+```
+bash train.sh \
     0 \
     dataset/audio/train \
     dataset/audio/valid \
     dataset/mel/train \
     dataset/mel/valid \
     hifigan \
-    0 0 0 \
-    conf/hifigan/light.yaml
-    ```
-- Train from checkpoint
-    - command:
-    ```
-    bash train.sh \
-        <GPU ids> \
-        /path/to/audio/train \
-        /path/to/audio/valid \
-        /path/to/mel/train \
-        /path/to/mel/valid \
-        <model name> \
-        <if multi band> \
-        <if use scheduler> \
-        <path to configuration file> \
-        /path/to/checkpoint \
-        <step of checkpoint>
-    ```
-- Synthesize
-    - command:
-    ```
-    bash synthesize.sh \
-        /path/to/checkpoint \
-        /path/to/mel \
-        /path/for/saving/wav \
-        <model name> \
-        /path/to/configuration/file
-    ```
+    conf/hifigan/light.yaml \
+    0 0
+```
+
+### 3. Train from checkpoint
+- command:
+```
+bash train.sh \
+    <GPU ids> \
+    /path/to/audio/train \
+    /path/to/audio/valid \
+    /path/to/mel/train \
+    /path/to/mel/valid \
+    <model name> \
+    <path to configuration file> \
+    <if use scheduler> \
+    <if mix precision training> \
+    /path/to/checkpoint \
+    <step of checkpoint>
+```
+
+### 4. Synthesize
+- command:
+```
+bash synthesize.sh \
+    /path/to/checkpoint \
+    /path/to/mel \
+    /path/for/saving/wav \
+    <model name> \
+    /path/to/configuration/file
+```
 
 ## Acknowledgments
 
