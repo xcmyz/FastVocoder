@@ -89,15 +89,14 @@ class WeightDataset(Dataset):
         wav = np.load(self.audio_index[idx])
         wav = torch.from_numpy(wav)
         weight_path = os.path.join("Basis-MelGAN-dataset", "weight", self.audio_index[idx].split("/")[-1])
-        weight = np.load(weight_path)
+        weight = np.load(weight_path).T
         weight = torch.from_numpy(weight)
         data = {"mel": mel, "wav": wav, "weight": weight}
-
         len_data = data["mel"].size(0)
         start_index = random.randint(0, len_data - hparams.fixed_length - 1)
         end_index = start_index + hparams.fixed_length
-        weight_start_index = start_index * (self.L // 2)
-        weight_end_index = end_index * (self.L // 2)
+        weight_start_index = start_index * (hparams.hop_size // (self.L // 2))
+        weight_end_index = end_index * (hparams.hop_size // (self.L // 2))
         wav_start_index = start_index * hparams.hop_size
         wav_end_index = end_index * hparams.hop_size
         buffer_cut = {
