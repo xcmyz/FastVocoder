@@ -69,6 +69,9 @@ def trainer(model, discriminator,
         est_source = model(mel)
     else:
         est_source, est_weight = model(mel)
+        weight_average = est_weight.sum() / (est_weight.size(0) * est_weight.size(1) * est_weight.size(2))
+        weight_average = round(weight_average.item(), 6)
+        tensorboard_writer.add_scalar('weight_average_value', weight_average, global_step=current_step)
 
     # Cal Loss
     total_loss = 0.
