@@ -24,7 +24,7 @@ Recent studies have shown that neural vocoders based on generative adversarial n
 - Refer to [xcmyz: ConvTasNet4BasisMelGAN](https://github.com/xcmyz/ConvTasNet4BasisMelGAN) to get dataset for Basis-MelGAN
 - Put `generated`, `weight` and `basis_signal_weight.npy` in one folder `Basis-MelGAN-dataset`
 - Write path of wav data in a file, for example: ``` cd dataset && python3 basismelgan.py ```
-- Run ``` bash preprocess.sh dataset/basismelgan.txt <path to save processed data> dataset/audio dataset/mel ```
+- Run ``` bash preprocess.sh dataset/basismelgan.txt Basis-MelGAN-dataset/processed dataset/audio dataset/mel ```
 
 ### 3. Train
 
@@ -50,8 +50,8 @@ bash train.sh \
     dataset/audio/valid \
     dataset/mel/train \
     dataset/mel/valid \
-    hifigan \
-    conf/hifigan/light.yaml \
+    basis-melgan \
+    conf/basis-melgan/normal.yaml \
     0 0
 ```
 
