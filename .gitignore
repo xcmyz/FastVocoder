@@ -144,6 +144,7 @@ cython_debug/
 dataset/*
 !dataset/aishell3.py
 !dataset/biaobei.py
+!dataset/basismelgan.py
 logger/
 checkpoint/
 processed*
