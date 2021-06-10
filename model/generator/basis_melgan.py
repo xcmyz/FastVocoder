@@ -13,11 +13,6 @@ import numpy as np
 from .modules import ResidualStack
 from .modules import BasisSignalLayer, LastLinear
 
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
-                    datefmt='%m/%d/%Y %H:%M:%S',
-                    level=logging.INFO)
-logger = logging.getLogger(__name__)
-
 
 class BasisMelGANGenerator(torch.nn.Module):
     """MelGAN generator module."""
@@ -139,9 +134,6 @@ class BasisMelGANGenerator(torch.nn.Module):
 
         weight = self.melgan(c)
         weight = weight.contiguous().transpose(1, 2)
-        weight_average = weight.sum() / (weight.size(0) * weight.size(1) * weight.size(2))
-        weight_average = round(weight_average.item(), 6)
-        logger.info(f"weight average value: {weight_average}")
         est_source = self.basis_signal(weight)
         est_source = est_source[:, :weight.size(1) * (self.L // 2)]
         return est_source, weight
@@ -191,3 +183,7 @@ class BasisMelGANGenerator(torch.nn.Module):
         weight = weight.contiguous().transpose(1, 2)
         c = self.basis_signal(weight)
         return c.squeeze()
+
+    def test(self, weight):
+        wav_test = self.basis_signal(weight)
+        return wav_test
