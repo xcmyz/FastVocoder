@@ -228,9 +228,10 @@ class ResBlock2(torch.nn.Module):
 class BasisSignalLayer(nn.Module):
     """ Basis Signal """
 
-    def __init__(self, L, N):
+    def __init__(self, basis_signal_weight, L=64):
         super(BasisSignalLayer, self).__init__()
-        self.layer = nn.Linear(N, L, bias=False)
+        self.layer = nn.Linear(basis_signal_weight.size(0), basis_signal_weight.size(1), bias=False)
+        self.layer.weight = nn.Parameter(basis_signal_weight)
         self.L = L
 
     def forward(self, weight):
