@@ -19,6 +19,70 @@ Include MelGAN, HifiGAN and Multiband-HifiGAN, maybe include [NHV](https://www.i
 
 Recent studies have shown that neural vocoders based on generative adversarial network (GAN) can generate audios with high quality. While GAN based neural vocoders have shown to be computationally much more efficient than those based on autoregressive predictions, the real-time generation of the highest quality audio on CPU is still a very challenging task. One major computation of all GAN-based neural vocoders comes from the stacked upsampling layers, which were designed to match the length of the waveform's length of output and temporal resolution. Meanwhile, the computational complexity of upsampling networks is closely correlated with the numbers of samples generated for each window. To reduce the computation of upsampling layers, we propose a new GAN based neural vocoder called Basis-MelGAN where the raw audio samples are decomposed with a learned basis and their associated weights. As the prediction targets of Basis-MelGAN are the weight values associated with each learned basis instead of the raw audio samples, the upsampling layers in Basis-MelGAN can be designed with much simpler networks. Compared with other GAN based neural vocoders, the proposed Basis-MelGAN could produce comparable high-quality audio but significantly reduced computational complexity from HiFi-GAN V1's 17.74 GFLOPs to 7.95 GFLOPs.
 
+### 2. Prepare data
+
+- Refer to [xcmyz: ConvTasNet4BasisMelGAN](https://github.com/xcmyz/ConvTasNet4BasisMelGAN) to get dataset for Basis-MelGAN
+- Put `generated`, `weight` and `basis_signal_weight.npy` in one folder `Basis-MelGAN-dataset`
+- Write path of wav data in a file, for example: ``` cd dataset && python3 basismelgan.py ```
+- Run ``` bash preprocess.sh dataset/basismelgan.txt <path to save processed data> dataset/audio dataset/mel ```
+
+### 3. Train
+
+- command:
+```
+bash train.sh \
+    <GPU ids> \
+    /path/to/audio/train \
+    /path/to/audio/valid \
+    /path/to/mel/train \
+    /path/to/mel/valid \
+    <model name> \
+    <if multi band> \
+    <if use scheduler> \
+    <path to configuration file>
+```
+
+- for example:
+```
+bash train.sh \
+    0 \
+    dataset/audio/train \
+    dataset/audio/valid \
+    dataset/mel/train \
+    dataset/mel/valid \
+    hifigan \
+    0 0 0 \
+    conf/hifigan/light.yaml
+```
+
+### 4. Train from checkpoint
+- command:
+```
+bash train.sh \
+    <GPU ids> \
+    /path/to/audio/train \
+    /path/to/audio/valid \
+    /path/to/mel/train \
+    /path/to/mel/valid \
+    <model name> \
+    <if multi band> \
+    <if use scheduler> \
+    <path to configuration file> \
+    /path/to/checkpoint \
+    <step of checkpoint>
+```
+
+### 5. Synthesize
+- command:
+```
+bash synthesize.sh \
+    /path/to/checkpoint \
+    /path/to/mel \
+    /path/for/saving/wav \
+    <model name> \
+    /path/to/configuration/file
+```
+
 ## Usage (of MelGAN, HifiGAN and Multiband-HifiGAN)
 
 - Prepare data
