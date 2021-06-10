@@ -7,8 +7,9 @@ class Loss(nn.Module):
     def __init__(self):
         super(Loss, self).__init__()
         self.stft_loss = MultiResolutionSTFTLoss()
+        self.l1_loss = nn.L1Loss()
 
-    def forward(self, est_source, wav, pqmf=None):
+    def forward(self, est_source, wav, est_weight=None, weight=None, pqmf=None):
         if pqmf is not None:
             est_source_sub_band = est_source
             wav_full_band = wav
@@ -31,4 +32,9 @@ class Loss(nn.Module):
         assert est_source.size(1) == wav.size(1)
         sc_loss, mag_loss = self.stft_loss(est_source, wav)
         stft_loss = sc_loss + mag_loss
-        return stft_loss
+
+        weight_loss = None
+        if est_weight is not None and weight is not None:
+            weight_loss = self.l1_loss(est_weight, weight)
+
+        return stft_loss, weight_loss
