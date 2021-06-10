@@ -3,7 +3,7 @@
 
 ## Todo
 
-- [ ] Support [Basis-MelGAN](https://blog.xcmyz.xyz/demo/)
+- [x] Support [Basis-MelGAN](https://blog.xcmyz.xyz/demo/)
 - [ ] Support NHV
 
 ## Discription
@@ -13,7 +13,9 @@ Include MelGAN, HifiGAN and Multiband-HifiGAN, maybe include [NHV](https://www.i
 ## Demo
 [Demo README](/resource/demo/README.md)
 
-## Usage
+## Usage (of Basis-MelGAN)
+
+## Usage (of MelGAN, HifiGAN and Multiband-HifiGAN)
 
 - Prepare data
     - write path of wav data in a file, for example: ``` cd dataset && python3 biaobei.py ```
@@ -74,5 +76,5 @@ Include MelGAN, HifiGAN and Multiband-HifiGAN, maybe include [NHV](https://www.i
 
 ## Acknowledgments
 
-- [ParallelWaveGAN](https://github.com/kan-bayashi/ParallelWaveGAN)
-- [HiFi-GAN](https://github.com/jik876/hifi-gan)
+- [kan-bayashi: ParallelWaveGAN](https://github.com/kan-bayashi/ParallelWaveGAN)
+- [jik876: HiFi-GAN](https://github.com/jik876/hifi-gan)
