@@ -23,14 +23,15 @@ class BasisMelGANGenerator(torch.nn.Module):
     """MelGAN generator module."""
 
     def __init__(self,
-                 L=24,
+                 basis_signal_weight,
+                 L=30,
                  in_channels=80,
                  out_channels=256,
                  kernel_size=7,
-                 channels=[384, 384, 384],
+                 channels=[256, 256, 256],
                  bias=True,
-                 upsample_scales=[5, 4],
-                 stack_kernel_size=5,
+                 upsample_scales=[4, 4],
+                 stack_kernel_size=3,
                  stacks=3,
                  nonlinear_activation="LeakyReLU",
                  nonlinear_activation_params={"negative_slope": 0.2},
@@ -116,7 +117,7 @@ class BasisMelGANGenerator(torch.nn.Module):
 
         # basis signal
         self.L = L
-        self.basis_signal = BasisSignalLayer(L=L, N=out_channels)
+        self.basis_signal = BasisSignalLayer(basis_signal_weight, L=L)
 
         # apply weight norm
         if use_weight_norm:
