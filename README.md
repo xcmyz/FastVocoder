@@ -37,7 +37,7 @@ bash train.sh \
     /path/to/mel/train \
     /path/to/mel/valid \
     <model name> \
-    <path to configuration file> \
+    /path/to/configuration/file \
     <if use scheduler> \
     <if mix precision training>
 ```
@@ -65,7 +65,7 @@ bash train.sh \
     /path/to/mel/train \
     /path/to/mel/valid \
     <model name> \
-    <path to configuration file> \
+    /path/to/configuration/file \
     <if use scheduler> \
     <if mix precision training> \
     /path/to/checkpoint \
@@ -101,7 +101,7 @@ bash train.sh \
     /path/to/mel/train \
     /path/to/mel/valid \
     <model name> \
-    <path to configuration file> \
+    /path/to/configuration/file \
     <if use scheduler> \
     <if mix precision training>
 ```
@@ -128,7 +128,7 @@ bash train.sh \
     /path/to/mel/train \
     /path/to/mel/valid \
     <model name> \
-    <path to configuration file> \
+    /path/to/configuration/file \
     <if use scheduler> \
     <if mix precision training> \
     /path/to/checkpoint \
