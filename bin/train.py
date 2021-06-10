@@ -23,7 +23,7 @@ from model.generator.basis_melgan import BasisMelGANGenerator
 from model.discriminator import Discriminator
 from model.generator.pqmf import PQMF
 
-from data.dataset import BufferDataset, OriginalDataset, DataLoader
+from data.dataset import BufferDataset, WeightDataset, DataLoader
 from data.dataset import load_data_to_buffer, collate_fn_tensor, collate_fn_tensor_valid
 from data.utils import get_param_num
 
@@ -241,6 +241,7 @@ def run(args):
     with open(args.config) as f:
         config = yaml.load(f, Loader=yaml.Loader)
     hp.lambda_stft = config["lamda_stft"]
+    hp.use_feature_map_loss = config["use_feature_map_loss"]
 
     if args.model_name == "melgan":
         model = MelGANGenerator(in_channels=config["in_channels"],
@@ -362,14 +363,8 @@ def run(args):
 
     # Get dataset
     if args.model_name == "basis-melgan":
-        dataset = OriginalDataset(args.audio_index_path,
-                                  args.mel_index_path,
-                                  args.weight_index_path,
-                                  config["L"])
-        valid_dataset = OriginalDataset(args.audio_index_valid_path,
-                                        args.mel_index_valid_path,
-                                        args.weight_index_valid_path,
-                                        config["L"])
+        dataset = WeightDataset(args.audio_index_path, args.mel_index_path, config["L"])
+        valid_dataset = WeightDataset(args.audio_index_valid_path, args.mel_index_valid_path, config["L"])
     else:
         dataset = BufferDataset(buffer)
         valid_dataset = BufferDataset(valid_buffer)
@@ -393,7 +388,6 @@ def run(args):
     model = model.train()
     for epoch in range(hp.epochs):
         for i, batchs in enumerate(training_loader):
-            preload_data = None
 
             # real batch start here
             for j, db in enumerate(batchs):
@@ -401,14 +395,9 @@ def run(args):
 
                 # Get Data
                 clock_1_s = time.perf_counter()
-                mel, wav = 0, 0
-                if preload_data == None:
-                    mel = db["mel"].float().to(device)
-                    wav = db["wav"].float().to(device)
-                    mel = mel.contiguous().transpose(1, 2)
-                else:
-                    mel = preload_data["mel"]
-                    wav = preload_data["wav"]
+                mel = db["mel"].float().to(device)
+                wav = db["wav"].float().to(device)
+                mel = mel.contiguous().transpose(1, 2)
                 clock_1_e = time.perf_counter()
                 time_used_1 = round(clock_1_e - clock_1_s, 5)
 
@@ -456,11 +445,9 @@ def run_train():
     parser = argparse.ArgumentParser()
     parser.add_argument("--audio_index_path", type=str, default=os.path.join("dataset", "audio", "train"))
     parser.add_argument("--mel_index_path", type=str, default=os.path.join("dataset", "mel", "train"))
-    parser.add_argument("--weight_index_path", type=str, default=os.path.join("dataset", "weight", "train"))
 
     parser.add_argument("--audio_index_valid_path", type=str, default=os.path.join("dataset", "audio", "valid"))
     parser.add_argument("--mel_index_valid_path", type=str, default=os.path.join("dataset", "mel", "valid"))
-    parser.add_argument("--weight_index_valid_path", type=str, default=os.path.join("dataset", "weight", "valid"))
 
     parser.add_argument("--checkpoint_path", type=str, default="")
     parser.add_argument("--restore_step", type=int, default=0)
