@@ -4,6 +4,7 @@ import torch
 import pickle
 import random
 import hparams
+import data.audio as audio
 import numpy as np
 
 from tqdm import tqdm
@@ -104,6 +105,12 @@ class WeightDataset(Dataset):
             "wav": data["wav"][wav_start_index:wav_end_index],
             "weight": data["weight"][weight_start_index:weight_end_index, :]
         }
+        if False:
+            # for test
+            weight_numpy = buffer_cut["weight"].numpy()
+            wav_numpy = buffer_cut["wav"].numpy()
+            audio.save_wav(wav_numpy, os.path.join("test", f"test_{idx}.wav"), hparams.sample_rate)
+            np.save(os.path.join("test", f"test_{idx}.npy"), weight_numpy)
         return buffer_cut
 
 
