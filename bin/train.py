@@ -72,7 +72,7 @@ def trainer(model, discriminator,
 
     # Cal Loss
     total_loss = 0.
-    stft_loss, weight_loss = vocoder_loss(est_source, wav, pqmf=pqmf, weight=weight, est_weight=est_weight)
+    stft_loss, weight_loss = vocoder_loss(est_source, wav, est_weight=est_weight, weight=weight, pqmf=pqmf)
     s_l = stft_loss.item()
     stft_loss = hp.lambda_stft * stft_loss
     total_loss = total_loss + stft_loss
