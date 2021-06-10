@@ -3,7 +3,7 @@
 
 ## Todo
 
-- [x] Support [Basis-MelGAN](https://blog.xcmyz.xyz/demo/)
+- [x] Support Basis-MelGAN
 - [ ] Support NHV
 
 ## Discription
@@ -11,7 +11,9 @@
 Include **Basis-MelGAN**, MelGAN, HifiGAN and Multiband-HifiGAN, maybe include [NHV](https://www.isca-speech.org/archive/Interspeech_2020/pdfs/3188.pdf) in the future. Developed on [BiaoBei dataset](https://www.data-baker.com/#/data/index/source), you can modify `conf` and `hparams.py` to fit your own dataset and model.
 
 ## Demo
-[Demo README](/resource/demo/README.md)
+
+- [Demo README](/resource/demo/README.md)
+- [Basis-MelGAN demo page](https://blog.xcmyz.xyz/demo/)
 
 ## Usage (of Basis-MelGAN)
 
