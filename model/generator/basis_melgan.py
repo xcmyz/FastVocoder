@@ -136,6 +136,7 @@ class BasisMelGANGenerator(torch.nn.Module):
         Returns:
             Tensor: Output tensor (B, 1, T ** prod(upsample_scales)).
         """
+
         weight = self.melgan(c)
         weight = weight.contiguous().transpose(1, 2)
         weight_average = weight.sum() / (weight.size(0) * weight.size(1) * weight.size(2))
@@ -143,7 +144,7 @@ class BasisMelGANGenerator(torch.nn.Module):
         logger.info(f"weight average value: {weight_average}")
         est_source = self.basis_signal(weight)
         est_source = est_source[:, :weight.size(1) * (self.L // 2)]
-        return est_source
+        return est_source, weight
 
     def remove_weight_norm(self):
         """Remove weight normalization module from all of the layers."""
