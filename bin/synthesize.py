@@ -51,7 +51,10 @@ class Synthesizer:
                                               transposedconv=config["transposedconv"],
                                               bias=config["bias"]).to(device)
         elif model_name == "basis-melgan":
-            model = BasisMelGANGenerator(L=config["L"],
+            basis_signal_weight = np.load(os.path.join("Basis-MelGAN-dataset", "basis_signal_weight.npy"))
+            basis_signal_weight = torch.from_numpy(basis_signal_weight)
+            model = BasisMelGANGenerator(basis_signal_weight=basis_signal_weight,
+                                         L=config["L"],
                                          in_channels=config["in_channels"],
                                          out_channels=config["out_channels"],
                                          kernel_size=config["kernel_size"],
@@ -63,9 +66,7 @@ class Synthesizer:
                                          use_causal_conv=config["use_causal_conv"]).to(device)
         else:
             raise Exception("no model find!")
-        model.load_state_dict(
-            torch.load(os.path.join(checkpoint_path),
-                       map_location=torch.device(device))['model'])
+        model.load_state_dict(torch.load(os.path.join(checkpoint_path), map_location=torch.device(device))['model'])
         model.eval()
         model.remove_weight_norm()
         return model
