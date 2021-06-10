@@ -10,3 +10,4 @@ resblock_dilation_sizes: [[1, 3, 5], [1, 3, 5], [1, 3, 5]]
 transposedconv: True
 bias: True
 lamda_stft: 5.0 # Loss scale of stft loss
+multiband: False

@@ -11,3 +11,4 @@ stacks: 3 # Number of stacks in a single residual stack module.
 use_weight_norm: True # Whether to use weight normalization.
 use_causal_conv: False # Whether to use causal convolution.
 lamda_stft: 1.0 # Loss scale of stft loss
+multiband: False
