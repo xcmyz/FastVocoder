@@ -1,4 +1,4 @@
-# Fast (GAN Based Neural) Vocoder
+# Fast (GAN Based Neural) Vocoder (暂未更新)
 
 收录MelGAN，HiFi-GAN和Multi-Band HiFi-GAN，Discriminator包含MSD，MPD和MFD（from universal MelGAN）
 
