@@ -11,3 +11,4 @@ transposedconv: True
 bias: True
 lamda_stft: 1.0 # Loss scale of stft loss
 multiband: True
+use_feature_map_loss: True
