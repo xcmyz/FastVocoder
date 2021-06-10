@@ -73,12 +73,11 @@ class BufferDataset(Dataset):
         return buffer_cut
 
 
-class OriginalDataset(Dataset):
-    def __init__(self, audio_index_file_path, mel_index_file_path, weight_index_file_path, L):
+class WeightDataset(Dataset):
+    def __init__(self, audio_index_file_path, mel_index_file_path, L):
         self.audio_index = parse_path_file(audio_index_file_path)
         self.mel_index = parse_path_file(mel_index_file_path)
-        self.weight_index = parse_path_file(weight_index_file_path)
-        assert (len(self.audio_index) == len(self.mel_index)) and (len(self.mel_index) == len(self.weight_index))
+        assert (len(self.audio_index) == len(self.mel_index))
         self.L = L
 
     def __len__(self):
@@ -89,7 +88,8 @@ class OriginalDataset(Dataset):
         mel = torch.from_numpy(mel)
         wav = np.load(self.audio_index[idx])
         wav = torch.from_numpy(wav)
-        weight = np.load(self.weight_index[idx])
+        weight_path = os.path.join("Basis-MelGAN-dataset", "weight", self.audio_index[idx].split("/")[-1])
+        weight = np.load(weight_path)
         weight = torch.from_numpy(weight)
         data = {"mel": mel, "wav": wav, "weight": weight}
 
