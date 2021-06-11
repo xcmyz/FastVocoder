@@ -14,4 +14,4 @@ use_causal_conv: False # Whether to use causal convolution.
 lamda_stft: 1.0 # Loss scale of stft loss
 multiband: False
 use_feature_map_loss: False
-transposedconv: False
+transposedconv: True
