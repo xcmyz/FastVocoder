@@ -63,7 +63,8 @@ class Synthesizer:
                                          stack_kernel_size=config["stack_kernel_size"],
                                          stacks=config["stacks"],
                                          use_weight_norm=config["use_weight_norm"],
-                                         use_causal_conv=config["use_causal_conv"]).to(device)
+                                         use_causal_conv=config["use_causal_conv"],
+                                         transposedconv=config["transposedconv"]).to(device)
         else:
             raise Exception("no model find!")
         model.load_state_dict(torch.load(os.path.join(checkpoint_path), map_location=torch.device(device))['model'])
