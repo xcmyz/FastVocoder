@@ -34,7 +34,6 @@ use_feature_map_loss = True
 
 learning_rate = 1e-4
 learning_rate_discriminator = 5e-5
-weight_decay = 1e-6
 grad_clip_thresh = 1.0
 
 log_step = 5
