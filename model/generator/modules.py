@@ -114,13 +114,13 @@ class Conv1d1x1(Conv1d):
 
 
 class LastLinear(nn.Module):
-    def __init__(self, hidden_channel, out_channel):
+    def __init__(self, hidden_channel, out_channel, bias=True):
         super(LastLinear, self).__init__()
         self.activation = nn.LeakyReLU(negative_slope=0.2)
         self.bn_1 = nn.BatchNorm1d(hidden_channel)
-        self.linear_1 = Conv1d1x1(hidden_channel, hidden_channel, bias=True)
+        self.linear_1 = Conv1d1x1(hidden_channel, hidden_channel, bias=bias)
         self.bn_2 = nn.BatchNorm1d(hidden_channel)
-        self.linear_2 = Conv1d1x1(hidden_channel, out_channel, bias=True)
+        self.linear_2 = Conv1d1x1(hidden_channel, out_channel, bias=bias)
 
     def forward(self, x):
         x = self.activation(x)
