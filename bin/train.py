@@ -145,7 +145,10 @@ def trainer(model, discriminator,
 
         # re-compute y_ which leads better quality
         with torch.no_grad():
-            est_source_for_d = model(mel)
+            if weight is not None:
+                est_source_for_d, _ = model(mel)
+            else:
+                est_source_for_d = model(mel)
             if pqmf is not None:
                 est_source_for_d = pqmf.synthesis(est_source_for_d)[:, 0, :]
 
