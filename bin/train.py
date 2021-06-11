@@ -302,7 +302,8 @@ def run(args):
                                      stack_kernel_size=config["stack_kernel_size"],
                                      stacks=config["stacks"],
                                      use_weight_norm=config["use_weight_norm"],
-                                     use_causal_conv=config["use_causal_conv"]).to(device)
+                                     use_causal_conv=config["use_causal_conv"],
+                                     transposedconv=config["transposedconv"]).to(device)
     else:
         raise Exception("no model find!")
     pqmf = None
