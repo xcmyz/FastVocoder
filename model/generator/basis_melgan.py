@@ -12,6 +12,7 @@ import numpy as np
 
 from .modules import ResidualStack
 from .modules import BasisSignalLayer, LastLinear
+from .modules import UpsampleLayer
 
 
 class BasisMelGANGenerator(torch.nn.Module):
@@ -55,6 +56,7 @@ class BasisMelGANGenerator(torch.nn.Module):
                 If set to true, it will be applied to all of the conv layers.
             use_causal_conv (bool): Whether to use causal convolution.
         """
+
         super(BasisMelGANGenerator, self).__init__()
 
         # check hyper parameters is valid
@@ -102,7 +104,7 @@ class BasisMelGANGenerator(torch.nn.Module):
                 ]
 
         # add final layer
-        layers += [LastLinear(channels[-1], out_channels)]
+        layers += [LastLinear(channels[-1], out_channels, bias=bias)]
 
         if use_final_nonlinear_activation:
             layers += [torch.nn.ReLU()]
