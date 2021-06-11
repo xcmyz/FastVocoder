@@ -132,6 +132,31 @@ class LastLinear(nn.Module):
         return x
 
 
+class Stretch2d(torch.nn.Module):
+    """Stretch2d module."""
+
+    def __init__(self, x_scale, y_scale, mode="nearest"):
+        """Initialize Stretch2d module.
+        Args:
+            x_scale (int): X scaling factor (Time axis in spectrogram).
+            y_scale (int): Y scaling factor (Frequency axis in spectrogram).
+            mode (str): Interpolation mode.
+        """
+        super(Stretch2d, self).__init__()
+        self.x_scale = x_scale
+        self.y_scale = y_scale
+        self.mode = mode
+
+    def forward(self, x):
+        """Calculate forward propagation.
+        Args:
+            x (Tensor): Input tensor (B, C, F, T).
+        Returns:
+            Tensor: Interpolated tensor (B, C, F * y_scale, T * x_scale),
+        """
+        return F.interpolate(x, scale_factor=(self.y_scale, self.x_scale), mode=self.mode)
+
+
 class UpsampleLayer(nn.Module):
     def __init__(self,
                  in_channel,
@@ -143,11 +168,13 @@ class UpsampleLayer(nn.Module):
                  dilation=1,
                  bias=True):
         super(UpsampleLayer, self).__init__()
-        self.upsample = nn.Upsample(scale_factor=upsample_rate, mode="nearest")
+        self.upsample = Stretch2d(upsample_rate, 1, mode="nearest")
         self.conv = nn.Conv1d(in_channel, out_channel, kernel_size, stride, padding, dilation=dilation, bias=bias)
 
     def forward(self, x):
-        return self.conv(self.upsample(x))
+        x = self.upsample(x.unsqueeze(1))
+        x = self.conv(x.squeeze(1))
+        return x
 
 
 def init_weights(m, mean=0.0, std=0.01):
