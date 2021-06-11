@@ -36,7 +36,8 @@ class BasisMelGANGenerator(torch.nn.Module):
                  use_final_nonlinear_activation=True,
                  use_weight_norm=True,
                  use_causal_conv=False,
-                 transposedconv=True
+                 transposedconv=True,
+                 lastlinear=False
                  ):
         """Initialize MelGANGenerator module.
         Args:
@@ -112,7 +113,8 @@ class BasisMelGANGenerator(torch.nn.Module):
                 ]
 
         # add final layer
-        layers += [LastLinear(channels[-1], out_channels, bias=bias)]
+        if lastlinear:
+            layers += [LastLinear(channels[-1], out_channels, bias=bias)]
 
         if use_final_nonlinear_activation:
             layers += [torch.nn.ReLU()]
