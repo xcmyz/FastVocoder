@@ -303,6 +303,7 @@ def run(args):
                                      stacks=config["stacks"],
                                      use_weight_norm=config["use_weight_norm"],
                                      use_causal_conv=config["use_causal_conv"]).to(device)
+        print(model.basis_signal.layer.weight)
     else:
         raise Exception("no model find!")
     pqmf = None
