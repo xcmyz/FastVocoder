@@ -36,6 +36,7 @@ class BasisMelGANGenerator(torch.nn.Module):
                  use_final_nonlinear_activation=True,
                  use_weight_norm=True,
                  use_causal_conv=False,
+                 transposedconv=True
                  ):
         """Initialize MelGANGenerator module.
         Args:
@@ -76,6 +77,13 @@ class BasisMelGANGenerator(torch.nn.Module):
             # add upsampling layer
             layers += [getattr(torch.nn, nonlinear_activation)(**nonlinear_activation_params)]
             layers += [
+                UpsampleLayer(channels[i],
+                              channels[i + 1],
+                              upsample_rate=upsample_scale,
+                              kernel_size=(upsample_scale * 2 + 1),
+                              stride=1,
+                              padding=upsample_scale,
+                              bias=bias) if transposedconv == False else
                 torch.nn.ConvTranspose1d(
                     channels[i],
                     channels[i + 1],
