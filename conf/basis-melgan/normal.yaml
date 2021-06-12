@@ -6,7 +6,7 @@ in_channels: 80 # Number of input channels.
 out_channels: 256 # Number of output channels.
 kernel_size: 7 # Kernel size of initial and final conv layers.
 channels: [256, 256, 256] # Number of channels for each conv layers.
-upsample_scales: [4, 4] # List of Upsampling scales.
+upsample_scales: [8, 2] # List of Upsampling scales.
 stack_kernel_size: 3 # Kernel size of dilated conv layers in residual stack.
 stacks: 3 # Number of stacks in a single residual stack module.
 use_weight_norm: True # Whether to use weight normalization.
