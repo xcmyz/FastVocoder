@@ -152,3 +152,4 @@ features*bin
 tensorboard/
 BZNSYP*
 Basis-MelGAN-dataset/
+._*
