@@ -51,8 +51,7 @@ class Synthesizer:
                                               transposedconv=config["transposedconv"],
                                               bias=config["bias"]).to(device)
         elif model_name == "basis-melgan":
-            basis_signal_weight = np.load(os.path.join("Basis-MelGAN-dataset", "basis_signal_weight.npy"))
-            basis_signal_weight = torch.from_numpy(basis_signal_weight)
+            basis_signal_weight = torch.zeros(config["L"], config["out_channels"]).float()
             model = BasisMelGANGenerator(basis_signal_weight=basis_signal_weight,
                                          L=config["L"],
                                          in_channels=config["in_channels"],
