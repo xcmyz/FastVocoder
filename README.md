@@ -4,7 +4,7 @@
 ## Todo
 
 - [x] Support Basis-MelGAN
-- [ ] Add more demo
+- [x] Add more demo
 - [ ] Add pretrained model
 - [ ] Support NHV
 
