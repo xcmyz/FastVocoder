@@ -10,7 +10,7 @@
 
 ## Discription
 
-Include **Basis-MelGAN**, MelGAN, HifiGAN and Multiband-HifiGAN, maybe include [NHV](https://www.isca-speech.org/archive/Interspeech_2020/pdfs/3188.pdf) in the future. Developed on [BiaoBei dataset](https://www.data-baker.com/#/data/index/source), you can modify `conf` and `hparams.py` to fit your own dataset and model.
+Include **Basis-MelGAN**, MelGAN, HifiGAN and Multiband-HifiGAN, maybe include Neural Homomorphic Vocoder in the future. Developed on [BiaoBei dataset](https://www.data-baker.com/#/data/index/source), you can modify `conf` and `hparams.py` to fit your own dataset and model.
 
 ## Demo
 
