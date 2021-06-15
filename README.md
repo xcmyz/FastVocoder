@@ -56,7 +56,7 @@ bash train.sh \
     dataset/mel/train \
     dataset/mel/valid \
     basis-melgan \
-    conf/basis-melgan/normal.yaml \
+    conf/basis-melgan/4x4.yaml \
     0 0
 ```
 
