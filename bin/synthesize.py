@@ -79,6 +79,10 @@ class Synthesizer:
             est_source_remove_bias = est_source - bias
         return est_source, est_source_remove_bias, bias
 
+    def test_rtf(self, mel):
+        with torch.no_grad():
+            self.model.inference(mel)
+
 
 def run_synthesizer():
     parser = argparse.ArgumentParser()
