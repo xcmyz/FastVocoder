@@ -152,8 +152,3 @@ bash synthesize.sh \
 ```
 
 ## Tensorboard
-
-## Acknowledgments
-
-- [kan-bayashi: ParallelWaveGAN](https://github.com/kan-bayashi/ParallelWaveGAN)
-- [jik876: HiFi-GAN](https://github.com/jik876/hifi-gan)
