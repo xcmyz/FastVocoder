@@ -143,11 +143,20 @@ class BasisMelGANGenerator(torch.nn.Module):
         Returns:
             Tensor: Output tensor (B, 1, T ** prod(upsample_scales)).
         """
+        # for removing model bias
+        zero_input = torch.zeros_like(c)
+        zero_weight = self.melgan(zero_input)
+        zero_weight = zero_weight.contiguous().transpose(1, 2)
+        zero_est_source = self.basis_signal(zero_weight)
+        zero_est_source = zero_est_source[:, :zero_weight.size(1) * (self.L // 2)]
 
         weight = self.melgan(c)
         weight = weight.contiguous().transpose(1, 2)
         est_source = self.basis_signal(weight)
         est_source = est_source[:, :weight.size(1) * (self.L // 2)]
+
+        est_source = est_source - zero_est_source
+        weight = weight - zero_weight
         return est_source, weight
 
     def remove_weight_norm(self):
