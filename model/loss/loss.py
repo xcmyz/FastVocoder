@@ -41,6 +41,6 @@ class Loss(nn.Module):
 
         if zero_est_source is not None:
             zero_sc_loss, zero_mag_loss = self.stft_loss(zero_est_source, torch.zeros_like(wav))
-            stft_loss = stft_loss + zero_est_source + zero_mag_loss
+            stft_loss = stft_loss + zero_sc_loss + zero_mag_loss
 
         return stft_loss, weight_loss
