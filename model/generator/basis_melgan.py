@@ -7,6 +7,7 @@
 
 import torch
 import logging
+import random
 import hparams as hp
 import numpy as np
 
@@ -136,7 +137,7 @@ class BasisMelGANGenerator(torch.nn.Module):
         # initialize pqmf for inference
         self.pqmf = None
 
-    def forward(self, c, return_zero=False):
+    def forward(self, c):
         """Calculate forward propagation.
         Args:
             c (Tensor): Input tensor (B, channels, T).
@@ -155,12 +156,11 @@ class BasisMelGANGenerator(torch.nn.Module):
         est_source = self.basis_signal(weight)
         est_source = est_source[:, :weight.size(1) * (self.L // 2)]
 
-        est_source = est_source - zero_est_source
-        weight = weight - zero_weight
-        if return_zero:
-            return est_source, zero_est_source, weight
-        else:
-            return est_source, weight
+        if random.random() < 0.7:
+            est_source = est_source - zero_est_source
+            weight = weight - zero_weight
+
+        return est_source, weight
 
     def remove_weight_norm(self):
         """Remove weight normalization module from all of the layers."""
