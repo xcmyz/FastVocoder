@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 from .stft_loss import MultiResolutionSTFTLoss
@@ -9,7 +10,7 @@ class Loss(nn.Module):
         self.stft_loss = MultiResolutionSTFTLoss()
         self.l1_loss = nn.L1Loss()
 
-    def forward(self, est_source, wav, est_weight=None, weight=None, pqmf=None):
+    def forward(self, est_source, wav, zero_est_source=None, est_weight=None, weight=None, pqmf=None):
         weight_loss = None
         if pqmf is not None:
             est_source_sub_band = est_source
@@ -37,5 +38,9 @@ class Loss(nn.Module):
 
         if est_weight is not None and weight is not None:
             weight_loss = self.l1_loss(est_weight, weight)
+
+        if zero_est_source is not None:
+            zero_sc_loss, zero_mag_loss = self.stft_loss(zero_est_source, torch.zeros_like(wav))
+            stft_loss = stft_loss + zero_est_source + zero_mag_loss
 
         return stft_loss, weight_loss
