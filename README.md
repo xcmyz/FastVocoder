@@ -1,5 +1,4 @@
 # Fast (GAN Based Neural) Vocoder
-[Chinese README](/resource/README_CN.md)
 
 ## Todo
 
@@ -56,7 +55,7 @@ bash train.sh \
     dataset/mel/train \
     dataset/mel/valid \
     basis-melgan \
-    conf/basis-melgan/4x4.yaml \
+    conf/basis-melgan/light.yaml \
     0 0
 ```
 
