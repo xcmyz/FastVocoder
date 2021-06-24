@@ -4,12 +4,12 @@
 
 - [x] Support Basis-MelGAN
 - [x] Add more demo
-- [ ] Add pretrained model
+- [x] Add pretrained model
 - [ ] Support NHV
 
 ## Discription
 
-Include **Basis-MelGAN**, MelGAN, HifiGAN and Multiband-HifiGAN, maybe include Neural Homomorphic Vocoder in the future. Developed on [BiaoBei dataset](https://www.data-baker.com/#/data/index/source), you can modify `conf` and `hparams.py` to fit your own dataset and model.
+Include Basis-MelGAN (paper link comming soon), MelGAN, HifiGAN and Multiband-HifiGAN, maybe include Neural Homomorphic Vocoder in the future. Developed on [BiaoBei dataset](https://www.data-baker.com/#/data/index/source), you can modify `conf` and `hparams.py` to fit your own dataset and model.
 
 ## Demo
 
