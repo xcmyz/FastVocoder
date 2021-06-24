@@ -26,4 +26,6 @@
 
 ## Basis-MelGAN
 
-coming soon...
+- step: 815k
+- training command: ``` bash train.sh 0 dataset/audio/train dataset/audio/valid dataset/mel/train dataset/mel/valid basis-melgan conf/basis-melgan/light.yaml 0 0 ```
+- demo: `./resource/demo/0.basis.melgan.light.815000.remove.wav`
