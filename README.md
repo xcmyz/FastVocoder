@@ -15,7 +15,7 @@ Include **Basis-MelGAN**, MelGAN, HifiGAN and Multiband-HifiGAN, maybe include N
 
 - [Demo README](/resource/demo/README.md)
 - [Basis-MelGAN demo page](https://blog.xcmyz.xyz/demo/)
-- [Pretrained Model]()
+- [Basis-MelGAN pretrained Model](https://github.com/xcmyz/FastVocoder/releases/download/v1.0/basis.melgan.pt)
 
 ## Usage (of Basis-MelGAN)
 
