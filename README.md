@@ -152,4 +152,8 @@ bash synthesize.sh \
 
 ## Tensorboard
 
-![basis-melgan tensorboard](./resource/tensorboard.png)
+Basis-MelGAN tensorboard
+
+<div style="text-align: center">
+    <img src="./resource/tensorboard.png" style="max-width:50%;">
+</div>
