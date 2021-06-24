@@ -151,3 +151,5 @@ bash synthesize.sh \
 ```
 
 ## Tensorboard
+
+![basis-melgan tensorboard](./resource/tensorboard.png)
