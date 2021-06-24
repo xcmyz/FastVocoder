@@ -149,11 +149,3 @@ bash synthesize.sh \
     <model name> \
     /path/to/configuration/file
 ```
-
-## Tensorboard
-
-Basis-MelGAN tensorboard
-
-<div style="text-align: center" style="max-width:50%;">
-    <img src="./resource/tensorboard.png">
-</div>
