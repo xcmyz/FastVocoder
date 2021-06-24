@@ -156,9 +156,8 @@ class BasisMelGANGenerator(torch.nn.Module):
         est_source = self.basis_signal(weight)
         est_source = est_source[:, :weight.size(1) * (self.L // 2)]
 
-        if random.random() < 0.7:
-            est_source = est_source - zero_est_source
-            weight = weight - zero_weight
+        est_source = est_source - zero_est_source
+        weight = weight - zero_weight
 
         return est_source, weight
 
