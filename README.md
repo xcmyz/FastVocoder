@@ -154,6 +154,6 @@ bash synthesize.sh \
 
 Basis-MelGAN tensorboard
 
-<div style="text-align: center">
-    <img src="./resource/tensorboard.png" style="max-width:50%;">
+<div style="text-align: center" style="max-width:50%;">
+    <img src="./resource/tensorboard.png">
 </div>
