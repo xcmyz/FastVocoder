@@ -153,3 +153,4 @@ tensorboard/
 BZNSYP*
 Basis-MelGAN-dataset/
 ._*
+*.pptx
