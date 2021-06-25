@@ -17,6 +17,16 @@ Include Basis-MelGAN (paper link comming soon), MelGAN, HifiGAN and Multiband-Hi
 - [Basis-MelGAN demo page](https://blog.xcmyz.xyz/demo/)
 - [Basis-MelGAN pretrained Model](https://github.com/xcmyz/FastVocoder/releases/download/v1.0/basis.melgan.pt)
 
+## RTF
+
+- Platform: MacBook Pro M1
+- HiFiGAN (large): NaN
+- HiFiGAN (light, baseline): 0.2424
+- MultiBand-HiFiGAN (large): 0.4956
+- MultiBand-HiFiGAN (light): 0.1591
+- Basis-MelGAN: 0.0498
+- HiFiGAN (light) : MultiBand-HiFiGAN (large) : MultiBand-HiFiGAN (light) : Basis-MelGAN = 50 : 102 : 33 : 10
+
 ## Usage (of Basis-MelGAN)
 
 ### 1. abstract
