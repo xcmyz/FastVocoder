@@ -154,3 +154,4 @@ BZNSYP*
 Basis-MelGAN-dataset/
 ._*
 *.pptx
+!test.py
