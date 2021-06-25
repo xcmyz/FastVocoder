@@ -42,7 +42,7 @@ try:
     import apex
     from apex import amp
 except:
-    logger.info("Cannot load Apex (Using apex to accelerate training.)")
+    logger.warning("Cannot load Apex (Using apex to accelerate training.)")
 
 
 def trainer(model, discriminator,
