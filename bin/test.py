@@ -13,6 +13,8 @@ from model.generator import HiFiGANGenerator
 from model.generator import BasisMelGANGenerator
 
 USE_PATTERN = True
+TEST_RTF = True
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
@@ -95,7 +97,8 @@ class Synthesizer:
 
 def run_test():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--checkpoint_path', type=str)
+    parser.add_argument("--checkpoint_path", type=str)
+    parser.add_argument("--file_path", type=str)
     parser.add_argument("--model_name", type=str, help="melgan, hifigan and multiband-hifigan.")
     parser.add_argument("--config", type=str, help="path to model configuration file")
     args = parser.parse_args()
@@ -103,26 +106,28 @@ def run_test():
     synthesizer = Synthesizer(args.checkpoint_path, args.config, args.model_name)
     mels = []
     duration = 0.0
-    for file in ["test0.npy", "test1.npy", "test2.npy"]:
-        mel = np.load(file).T
+    list_files = os.listdir(args.file_path)
+    for file in list_files:
+        mel = np.load(os.path.join(args.file_path, file)).T
         mels.append(mel)
         duration += (mel.shape[0] * hp.hop_size) / hp.sample_rate
+    print(f"duration is {duration}s.")
 
     if args.model_name == "basis-melgan":
-        for mel, filename in zip(mels, ["test0.npy", "test1.npy", "test2.npy"]):
+        for mel, filename in zip(mels, list_files):
             est_source = synthesizer.synthesize(mel)
-            save_wav(est_source.numpy(), f"{filename}.wav", sample_rate=hp.sample_rate)
+            save_wav(est_source.numpy(), os.path.join(args.file_path, f"{filename}.wav"), sample_rate=hp.sample_rate)
 
-    print(f"duration is {duration}s.")
-    s = time.perf_counter()
-    for _ in range(10):
-        for mel in mels:
-            synthesizer.test_rtf(mel)
-    e = time.perf_counter()
-    cost = e - s
-    print(f"cost time: {cost}s.")
-    rtf = cost / (10.0 * duration)
-    print(f"rtf is {rtf}.")
+    if TEST_RTF:
+        s = time.perf_counter()
+        for _ in range(10):
+            for mel in mels:
+                synthesizer.test_rtf(mel)
+        e = time.perf_counter()
+        cost = e - s
+        print(f"cost time: {cost}s.")
+        rtf = cost / (10.0 * duration)
+        print(f"rtf is {rtf}.")
 
 
 if __name__ == "__main__":
