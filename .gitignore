@@ -156,3 +156,4 @@ Basis-MelGAN-dataset/
 *.pptx
 !test.py
 !test.sh
+generatelist
