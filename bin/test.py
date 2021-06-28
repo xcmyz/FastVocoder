@@ -12,6 +12,7 @@ from model.generator import MultiBandHiFiGANGenerator
 from model.generator import HiFiGANGenerator
 from model.generator import BasisMelGANGenerator
 
+USE_PATTERN = True
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
@@ -80,7 +81,11 @@ class Synthesizer:
         # only support basis-melgan
         with torch.no_grad():
             est_source = self.model.inference(mel)[:-(self.L // 2)]
-            est_source = est_source - self.pattern[:est_source.size(0)]
+            if USE_PATTERN:
+                est_source = est_source - self.pattern[:est_source.size(0)]
+            else:
+                bias = self.model.inference(torch.zeros_like(torch.from_numpy(mel)).float())[:-(self.L // 2)]
+                est_source = est_source - bias
         return est_source
 
     def test_rtf(self, mel):
