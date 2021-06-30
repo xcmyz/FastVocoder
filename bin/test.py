@@ -108,7 +108,9 @@ def run_test():
     duration = 0.0
     list_files = os.listdir(args.file_path)
     for file in list_files:
-        mel = np.load(os.path.join(args.file_path, file)).T
+        mel = np.load(os.path.join(args.file_path, file))
+        if mel.shape[0] == hp.num_mels:
+            mel = mel.T
         mels.append(mel)
         duration += (mel.shape[0] * hp.hop_size) / hp.sample_rate
     print(f"duration is {duration}s.")
