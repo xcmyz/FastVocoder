@@ -403,6 +403,7 @@ def run(args):
                                  num_workers=4,
                                  prefetch_factor=2,
                                  pin_memory=True)
+    logger.info(f"Length of training loader is {len(training_loader)}")
     total_step = hp.epochs * len(training_loader) * hp.batch_expand_size
 
     # Define Some Information
