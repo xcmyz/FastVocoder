@@ -44,6 +44,7 @@ def kernel(wav_filepath, mel_filepath, new_wav_filepath):
         mel = audio.melspectrogram(y)
         np.save(mel_filepath, mel)
         np.save(new_wav_filepath, y)
+        return mel.shape[1]
     except Exception:
         pass
 
@@ -66,7 +67,8 @@ def preprocess_multiprocessing(data_path_file, save_path):
             audio_index.append(new_wav_filepath)
             mel_index.append(mel_filepath)
             futures.append(executor.submit(partial(kernel, wav_filepath, mel_filepath, new_wav_filepath)))
-    [future.result() for future in tqdm(futures)]
+    length_list = [future.result() for future in tqdm(futures)]
+    print(f"min length of mel spectrogram is {min(length_list)}.")
     return audio_index, mel_index
 
 
