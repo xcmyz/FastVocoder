@@ -157,3 +157,4 @@ Basis-MelGAN-dataset/
 !test.py
 !test.sh
 generatelist
+resource/test_*
